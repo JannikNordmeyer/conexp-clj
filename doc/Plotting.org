@@ -32,7 +32,7 @@ All charts can be displayed using the ~render-chart~ function:
 (render-chart chart)
 #+end_src
 
-[[./AttributePlot.png]]
+[[./images/AttributePlot.png]]
 
 A plot displaying the distribution for all attributed may be created using the ~plot-attribute-distributions~ function.
 
@@ -44,7 +44,7 @@ It takes the length of the interval as an additional argument.
 (render-chart chart)
 #+end_src
 
-[[./IntervalPlot.png]]
+[[./images/IntervalPlot.png]]
 
 If the attribute is not numeric, an order needs to be provided as a vector of elements. Each value of the attribute in ~ctx~ needs to be present in the order.
 
@@ -55,7 +55,7 @@ If the attribute is not numeric, an order needs to be provided as a vector of el
 (render-chart chart)
 #+end_src
 
-[[./OrderPlot.png]]
+[[./images/OrderPlot.png]]
 
 
 ** Retrieving Scaling Contexts
