@@ -1,0 +1,91 @@
+#+property: header-args :wrap src text
+#+property: header-args:text :eval never
+
+* Plotting Attributes in ~conexp-clj~
+
+~conexp-clj~ provides a number of functions to visualize the distribution of attributes in contexts, and derive appropriate scalings from them.
+The following context will be used as an example in this documentation:
+#+begin_src clojure
+(def ctx (make-mv-context #{"Brainstorm" "Swords to Plowshares" "Stoneforge Mystic" "Tundra" "Supreme Verdict" "Batterskull" "Force of Will"}
+                             #{"Type" "CMC" "Copies" "Mana Cost"}
+                             #{["Brainstorm" "Type" "Instant"] ["Brainstorm" "CMC" 1] ["Brainstorm" "Copies" "4"] ["Brainstorm" "Mana Cost" "U"]
+                               ["Swords to Plowshares" "Type" "Instant"] ["Swords to Plowshares" "CMC" 1] ["Swords to Plowshares" "Copies" "4"] ["Swords to Plowshares" "Mana Cost" "W"]
+                               ["Stoneforge Mystic" "Type" "Creature"] ["Stoneforge Mystic" "CMC" 2] ["Stoneforge Mystic" "Copies" "4"] ["Stoneforge Mystic" "Mana Cost" "1W"]
+                               ["Tundra" "Type" "Land"] ["Tundra" "CMC" 0] ["Tundra" "Copies" "2"] ["Tundra" "Mana Cost" "-"]
+                               ["Supreme Verdict" "Type" "Sorcery"] ["Supreme Verdict" "CMC" 4] ["Supreme Verdict" "Copies" "1"] ["Supreme Verdict" "Mana Cost" "1WWU"]
+                               ["Batterskull" "Type" "Artifact"] ["Batterskull" "CMC" 5] ["Batterskull" "Copies" "1"] ["Batterskull" "Mana Cost" "5"]
+                               ["Force of Will" "Type" "Instant"] ["Force of Will" "CMC" 5] ["Force of Will" "Copies" "4"] ["Force of Will" "Mana Cost" "3UU"]}))
+#+end_src
+
+** Plotting Attribute Distributions
+
+The ~plot-attribute-distribution~ function may be used to create a bar chart of how often each value occurs for any given attribute.
+It takes the context, as well as the attribute in question as arguments.
+
+#+begin_src clojure
+(def chart (plot-attribute-distribution ctx "Copies"))
+#+end_src
+
+All charts can be displayed using the ~render-chart~ function:
+
+#+begin_src clojure
+(render-chart chart)
+#+end_src
+
+[[./AttributePlot.png]]
+
+A plot displaying the distribution for all attributed may be created using the ~plot-attribute-distributions~ function.
+
+If the attribute is numeric, the values may can be broken down into intervals using the ~plot-attribute-interval~ function.
+It takes the length of the interval as an additional argument.
+
+#+begin_src clojure
+(def chart (plot-attribute-interval ctx "CMC" 2))
+(render-chart chart)
+#+end_src
+
+[[./IntervalPlot.png]]
+
+If the attribute is not numeric, an order needs to be provided as a vector of elements. Each value of the attribute in ~ctx~ needs to be present in the order.
+
+#+begin_src clojure
+(def order ["-" "U" "W" "1W" "1WWU" "5" "3UU"])
+
+(def chart (plot-attribute-interval ctx "Mana Cost" 2 order))
+(render-chart chart)
+#+end_src
+
+[[./OrderPlot.png]]
+
+
+** Retrieving Scaling Contexts
+
+The function ~generate-interval-scaling~ can be used to retrieve a context representing the scaling implied by the intervals.
+This function also works on both numeric and non-numeric attributes and requires the same respecitve arguments as ~plot-attribute-interval~.
+
+#+begin_src clojure
+(generate-interval-scaling ctx "Copies" 2)
+(generate-interval-scaling ctx "Mana Cost" 2 order)
+#+end_src
+
+#+RESULTS: no-hline
+
+  |(-1-1] (1-3] (3-5] 
+--+-------------------
+1 |x      .     .     
+2 |.      x     .     
+4 |.      .     x     
+
+
+     |--U 1WWU-5 3UU- W-1W 
+-----+---------------------
+-    |x   .      .    .    
+1W   |.   .      .    x    
+1WWU |.   x      .    .    
+3UU  |.   .      x    .    
+5    |.   x      .    .    
+U    |x   .      .    .    
+W    |.   .      .    x  
+
+
+

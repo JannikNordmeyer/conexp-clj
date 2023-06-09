@@ -69,14 +69,12 @@
        (every? true? (for [value values] (number? (read-string (str (get  value 1))))))))
 
 (defn plot-attribute-subdivide [ctx attr segments]
-  (assert (and (integer? segments) (< 1 segments)) "\"Segments\" needs to be an integer larger than 1.")
+  (assert (and (integer? segments) (< 1 segments)) "*Segments* needs to be an integer larger than 1.")
   (let [incidence  (incidence ctx)
          values (filter #(= (get (first %) 1) attr) incidence)
          num-values (for [v values] (read-string (str (get v 1))))
          min-value (apply min num-values)
          max-value (apply max num-values)]
-
-(print (- (/ (- max-value min-value) segments) 1))
 
         (plot-attribute-interval ctx attr (/ (- max-value min-value) segments))))
 
@@ -171,24 +169,25 @@
    (make-context (set objects) (set attributes) (set incidence))))
 )
 
+(generate-interval-scaling ctx "Copies" 2)
 (generate-interval-scaling ctx "Mana Cost" 2 order)
 
 
-(def chart (plot-attribute ctx "Copies"))
+(def chart (plot-attribute-distribution ctx "Copies"))
 (render-chart chart)
 
-(def chart2 (plot-all ctx))
+(def chart2 (plot-attribute-distributions ctx))
 (render-chart chart2)
 
 (def chart3 (plot-attribute-subdivide ctx "Copies" 3))
 (render-chart chart3)
 
-(def ichart (plot-interval ctx "CMC" 2))
+(def ichart (plot-attribute-interval ctx "CMC" 2))
 (render-chart ichart)
 
 (def order ["-" "U" "W" "1W" "1WWU" "5" "3UU"])
 
-(def ichart2 (plot-interval ctx "Mana Cost" 2 order))
+(def ichart2 (plot-attribute-interval ctx "Mana Cost" 2 order))
 (render-chart ichart2)
 
 
