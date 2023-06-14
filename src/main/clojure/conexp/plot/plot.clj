@@ -69,35 +69,53 @@
        (every? true? (for [value values] (number? (read-string (str (get  value 1))))))))
 
 
-(defn plot-attribute-value-intervals [ctx attr & {:keys [intervals num_intervals] :as opts}]
+(defn plot-attribute-value-intervals [ctx attr & {:keys [intervals num_intervals order] :as opts}]
+  "Creates a Plot of the Context's Attributed Subdivided into Intervals.
+   Resolves the Combination of Arguments and Calls plot-attribute-interval Accordingly."
 
   ;Forward supplied Intervals
-  (if (:intervals opts) (plot-attribute-interval ctx attr (:intervals opts))
+  (if (:intervals opts) 
+     (if (:order opts) 
+        (plot-attribute-interval ctx attr (:intervals opts) (:order opts))
+        (plot-attribute-interval ctx attr (:intervals opts)))
   
-
+  ;Compute Intervals from supplied Interval Number
   (if (:num_intervals opts)
-    (let [incidence  (incidence ctx)
-          values (filter #(= (get (first %) 1) attr) incidence)
-          num-values (for [v values] (read-string (str (get v 1))))
-          min-value (apply min num-values)
-          max-value (apply max num-values)
-          step (/ (- max-value min-value) (:num_intervals opts))
-          intervals (for [x (range min-value max-value step)] [x (+ x step)] )]
+     (if (:order opts)
 
-       (plot-attribute-interval ctx attr intervals)
-     ) 
-)))
+          (let [step (Math/ceil (/ (count order) (:num_intervals opts)))
+                intervals (partition-all step order)]
+            (println step)
+
+          (plot-attribute-interval ctx attr intervals order))
+
+
+
+
+          (let [incidence  (incidence ctx)
+                values (filter #(= (get (first %) 1) attr) incidence)
+                num-values (for [v values] (read-string (str (get v 1))))
+                min-value (apply min num-values)
+                max-value (apply max num-values)
+                step (/ (- max-value min-value) (:num_intervals opts))
+                intervals (for [x (range min-value max-value step)] [x (+ x step)] )]
+
+          (plot-attribute-interval ctx attr intervals)))))
+)
 
 ;(assert (and (integer? (:num_intervals opts)) (< 0 (:num_interval opts))) "Intervall needs to be a positive interger.")
 
 
 ;(render-chart (plot-attribute-value-intervals ctx "Copies" :intervals [[1 2] [1 3] [2 4]]))
-
 ;(render-chart (plot-attribute-value-intervals ctx "Copies" :num_intervals 3))
+
+;(render-chart (plot-attribute-value-intervals ctx "Mana Cost" :intervals [["-" "W"]["1W" "1WWU"]["5" "3UU"]] :order order))
+;(render-chart (plot-attribute-value-intervals ctx "Mana Cost" :num_intervals 3 :order order))
 
 (defn plot-attribute-interval 
   ([ctx attr intervals] 
-   (println intervals)
+   "Creates a Plot of the Provided Attribute with Provided Intervals.
+    Attribute must be numeric."
    (let [incidence  (incidence ctx)
          values (filter #(= (get (first %) 1) attr) incidence)
          num-values (for [v values] (read-string (str (get v 1))))
@@ -122,9 +140,9 @@
                                    PlotOrientation/VERTICAL
                                    true true false)))
 
-  ([ctx attr interval order]
-   "Plots non-numeric attribute subdivided into interval based on specified order."
-   (assert (and (integer? interval) (< 0 interval)) "Intervall needs to be a positive interger.")
+  ([ctx attr intervals order]
+   "Creates a Plot of the Provided Attribute with Provided Intervals.
+    Attribute must be non-numeric Attributes. Order needs to be Provided."
    (let [incidence  (incidence ctx)
          values (filter #(= (get (first %) 1) attr) incidence)
          str-values (for [v values] (get v 1))
@@ -132,21 +150,22 @@
 
       (assert (subset? (set str-values) (set order)) "Attribute contains values not in specified Order.")
 
-      (loop [ n 0]
-         (let [occurrence (count (filter #(and 
-                                           (<= n (.indexOf order %))
-                                           (<= (.indexOf order %) (+ n (- interval 1))))
-                                         str-values))]
+      (doseq [interval intervals] 
+             (let [ occurrences (count (filter #(and 
+                                                  (<= (.indexOf order (first interval)) (.indexOf order %))
+                                                  (<= (.indexOf order %) (.indexOf order (last interval))))
+                                                str-values))]
+               (.addValue dataset occurrences (str (first interval) "-" (last interval)) attr)))
+                
 
-            (.addValue dataset occurrence (str (get order n) "-" (get order (+ n (- interval 1)))) attr)
-            (if (< (+ n interval) (count order)) (recur (+ n interval)))))
 
       (ChartFactory/createBarChart (str "Attribute: " attr) 
                                    "Values"
                                    "Number of Occurrences" 
                                    dataset
                                    PlotOrientation/VERTICAL
-                                   true true false))))
+                                   true true false)))
+)
 
 (defn generate-interval-scale
 
