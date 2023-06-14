@@ -36,7 +36,7 @@ All charts can be displayed using the ~render-chart~ function:
 
 A plot displaying the distribution for all attributed may be created using the ~plot-attribute-distributions~ function.
 
-If the attribute is numeric, the values may can be broken down into intervals using the ~plot-attribute-interval~ function.
+If the attribute is numeric, the values may be broken down into intervals using the ~plot-attribute-interval~ function.
 It takes the length of the interval as an additional argument.
 
 #+begin_src clojure

@@ -19,7 +19,7 @@
     [javax.swing JFrame]))
 
 
-(defn plot-attribute-distributions [ctx]
+(defn plot-all-attribute-values [ctx]
   "Generates a Chart of the Values of all Attributes of the Context"
   (let [dataset (DefaultCategoryDataset.)
         incidence  (incidence ctx)
@@ -38,7 +38,7 @@
                                              PlotOrientation/VERTICAL
                                              true true false)))
 
-(defn plot-attribute-distribution [ctx attr]
+(defn plot-attribute-values [ctx attr]
   "Generates a Chart of the Values of attr."
   (let [dataset (DefaultCategoryDataset.)
         incidence  (incidence ctx)
@@ -68,33 +68,52 @@
         values (filter #(= (get (first %) 1) attr) incidence)]
        (every? true? (for [value values] (number? (read-string (str (get  value 1))))))))
 
-(defn plot-attribute-subdivide [ctx attr segments]
-  (assert (and (integer? segments) (< 1 segments)) "*Segments* needs to be an integer larger than 1.")
-  (let [incidence  (incidence ctx)
-         values (filter #(= (get (first %) 1) attr) incidence)
-         num-values (for [v values] (read-string (str (get v 1))))
-         min-value (apply min num-values)
-         max-value (apply max num-values)]
 
-        (plot-attribute-interval ctx attr (/ (- max-value min-value) segments))))
+(defn plot-attribute-value-intervals [ctx attr & {:keys [intervals num_intervals] :as opts}]
+
+  ;Forward supplied Intervals
+  (if (:intervals opts) (plot-attribute-interval ctx attr (:intervals opts))
+  
+
+  (if (:num_intervals opts)
+    (let [incidence  (incidence ctx)
+          values (filter #(= (get (first %) 1) attr) incidence)
+          num-values (for [v values] (read-string (str (get v 1))))
+          min-value (apply min num-values)
+          max-value (apply max num-values)
+          step (/ (- max-value min-value) (:num_intervals opts))
+          intervals (for [x (range min-value max-value step)] [x (+ x step)] )]
+
+       (plot-attribute-interval ctx attr intervals)
+     ) 
+)))
+
+;(assert (and (integer? (:num_intervals opts)) (< 0 (:num_interval opts))) "Intervall needs to be a positive interger.")
+
+
+;(render-chart (plot-attribute-value-intervals ctx "Copies" :intervals [[1 2] [1 3] [2 4]]))
+
+;(render-chart (plot-attribute-value-intervals ctx "Copies" :num_intervals 3))
 
 (defn plot-attribute-interval 
-  ([ctx attr interval] 
-   "Plots numeric attribute subdivided into specified interval."
-   (assert (numeric? ctx attr) "Attribute appears to not be numeric.")
-   (assert (< 0 interval) "Intervall needs to be a positive number.")
+  ([ctx attr intervals] 
+   (println intervals)
    (let [incidence  (incidence ctx)
          values (filter #(= (get (first %) 1) attr) incidence)
          num-values (for [v values] (read-string (str (get v 1))))
-         min-value (apply min num-values)
-         max-value (apply max num-values)
          dataset (DefaultCategoryDataset.)]
 
-      (loop [n (- min-value interval)]
-         (let [occurrence (count (filter #(and (< n %)(>= (+ n interval) %)) num-values))] 
-
-            (.addValue dataset occurrence (str "(" n "-" (+ n interval) "]") attr)
-            (if (< (+ n interval) max-value) (recur (+ n interval)))))
+      (doseq [interval intervals] 
+            (let [occurrences (if (= interval (last intervals))
+                                 ;last interval is right closed
+                                 (count (filter #(and (<= (first interval) %)(>= (last interval) %)) num-values)) 
+                                 (count (filter #(and (<= (first interval) %)(> (last interval) %)) num-values)))]
+               
+               (if (= interval (last intervals))
+                      (.addValue dataset occurrences (str "[" (first interval) "-" (last interval) "]") attr)
+                      (.addValue dataset occurrences (str "[" (first interval) "-" (last interval) ")") attr))
+              
+      ))
 
       (ChartFactory/createBarChart (str "Attribute: " attr) 
                                    "Values"
@@ -129,8 +148,7 @@
                                    PlotOrientation/VERTICAL
                                    true true false))))
 
-
-(defn generate-interval-scaling 
+(defn generate-interval-scale
 
   ([ctx attr interval]
    "Generates context assigning each object to an attribute representing a range of lenth *interval*."
@@ -169,8 +187,8 @@
    (make-context (set objects) (set attributes) (set incidence))))
 )
 
-(generate-interval-scaling ctx "Copies" 2)
-(generate-interval-scaling ctx "Mana Cost" 2 order)
+(generate-interval-scale ctx "Copies" 2)
+(generate-interval-scale ctx "Mana Cost" 2 order)
 
 
 (def chart (plot-attribute-distribution ctx "Copies"))
