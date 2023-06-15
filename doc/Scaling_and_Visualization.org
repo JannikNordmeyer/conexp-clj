@@ -85,6 +85,7 @@ It accepts the same arguments as the ~plot-all-attribute-values~ function, and p
 5    |.     x      .         
 U    |x     .      .         
 W    |x     .      .  
+
 #+end_src
 
 
