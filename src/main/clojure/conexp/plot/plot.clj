@@ -90,8 +90,6 @@
           (plot-attribute-interval ctx attr intervals order))
 
 
-
-
           (let [incidence  (incidence ctx)
                 values (filter #(= (get (first %) 1) attr) incidence)
                 num-values (for [v values] (read-string (str (get v 1))))
@@ -102,8 +100,6 @@
 
           (plot-attribute-interval ctx attr intervals)))))
 )
-
-;(assert (and (integer? (:num_intervals opts)) (< 0 (:num_interval opts))) "Intervall needs to be a positive interger.")
 
 
 ;(render-chart (plot-attribute-value-intervals ctx "Copies" :intervals [[1 2] [1 3] [2 4]]))
@@ -167,40 +163,89 @@
                                    true true false)))
 )
 
-(defn generate-interval-scale
+;(generate-interval-scale ctx "Copies" :intervals [[1 2] [1 3] [2 4]])
+;(generate-interval-scale ctx "Copies" :num_intervals 3)
 
-  ([ctx attr interval]
-   "Generates context assigning each object to an attribute representing a range of lenth *interval*."
-   (let [incidence  (incidence ctx)
-         values (filter #(= (get (first %) 1) attr) incidence)
+;(generate-interval-scale ctx "Mana Cost" :intervals [["-" "W"]["1W" "1WWU"]["5" "3UU"]] :order order)
+;(generate-interval-scale ctx "Mana Cost" :num_intervals 3 :order order)
+
+(defn generate-interval-scale [ctx attr & {:keys [intervals num_intervals order] :as opts}]
+
+
+  ;Forward supplied Intervals
+  (if (:intervals opts) 
+     (if (:order opts) 
+        (generate-scale ctx attr (:intervals opts) (:order opts))
+        (generate-scale ctx attr (:intervals opts)))
+  
+  ;Compute Intervals from supplied Interval Number
+  (if (:num_intervals opts)
+     (if (:order opts)
+
+          (let [step (Math/ceil (/ (count order) (:num_intervals opts)))
+                intervals (partition-all step order)]
+            (println step)
+
+          (generate-scale ctx attr intervals order))
+
+
+          (let [incidence  (incidence ctx)
+                values (filter #(= (get (first %) 1) attr) incidence)
+                num-values (for [v values] (read-string (str (get v 1))))
+                min-value (apply min num-values)
+                max-value (apply max num-values)
+                step (/ (- max-value min-value) (:num_intervals opts))
+                intervals (for [x (range min-value max-value step)] [x (+ x step)] )]
+
+          (generate-scale ctx attr intervals)))))
+)
+
+(defn generate-scale
+
+  ([ctx attr intervals]
+   "Generates Context Assigning each Object to an Attribute Representing a Specified Interval.
+    For Use with numeric Attributes."
+   (let [ctx-incidence  (incidence ctx)
+         values (filter #(= (get (first %) 1) attr) ctx-incidence)
          num-values (for [v values] (read-string (str (get v 1))))
          min-value (apply min num-values)
          max-value (apply max num-values)
 
-         ;Generate Ranges as Attributes
-         attributes (for [x (range (- min-value interval) max-value interval)]
-                     (str "(" x "-" (+ x interval) "]"))
+         attributes (for [i intervals] (if (= i (last intervals)) 
+                                           (str "[" (first i) "-" (last i) "]")
+                                           (str "[" (first i) "-" (last i) ")") ))
+
          objects (distinct num-values)
          ;Assign Objects to Ranges/Attributes
-         incidence (filter identity (for [x (range (- min-value interval) max-value interval)
-                                         o objects]
+         incidence (filter identity (for [i intervals o objects]
 
-                                      (if (and (< x o) ( <= o ( + x interval)))
-                                           [o (str "(" x "-" (+ x interval) "]")])))]
+                                      (if (= i (last intervals))
+
+                                         (if (and (<= (first i) o) ( <= o (last i)))
+                                           [o (str "[" (first i) "-" (last i) "]")]) 
+
+                                         (if (and (<= (first i) o) ( < o (last i)))
+                                            [o (str "[" (first i) "-" (last i) ")")]))))]
+
+
 
    (make-context (set objects) (set attributes) (set incidence))))
 
-  ([ctx attr interval order]
-   "Generates a context asigning each object to a range containing *interval* objects."
-   (let [incidence  (incidence ctx)
-         values (filter #(= (get (first %) 1) attr) incidence)
+  ([ctx attr intervals order]
+   "Generates Context Assigning each Object to an Attribute Representing a Specified Interval.
+    For Use with non-numeric Attributes."
+   (let [ctx-incidence  (incidence ctx)
+         values (filter #(= (get (first %) 1) attr) ctx-incidence)
          str-values (for [v values] (get v 1))
 
          ;Generate Ranges as Attributes
-         attributes (for [x (range 0 (count order) interval)] (str (get order x) "-" (get order (- (+ x interval) 1))))
+         attributes (for [i intervals] (str "[" (first i) "-" (last i) "]"))
          objects order
          ;Assign Objects to Ranges/Attributes
-         incidence (for [x (range 0 (count objects))] [(get objects x) (nth attributes (Math/floor (/ x interval)))])
+         incidence (filter identity (for [i intervals o objects]
+                                         (if (and (<= (.indexOf order (first i)) (.indexOf order o))
+                                                  ( <= (.indexOf order o) (.indexOf order  (last i))))
+                                            [o (str "[" (first i) "-" (last i) "]")])))
          ]
 
    (make-context (set objects) (set attributes) (set incidence))))
