@@ -74,7 +74,6 @@ It accepts the same arguments as the ~plot-all-attribute-values~ function, and p
 (generate-interval-scale ctx "Mana Cost" :num_intervals 3 :order order)
 #+end_src
 
-#+RESULTS:
 #+begin_src text
      |[--W] [1W-5] [3UU-3UU] 
 -----+-----------------------
@@ -88,6 +87,6 @@ W    |x     .      .
 
 #+end_src
 
-The obtained contexts may be used with the ~scale-mv-context-with~ function as described in the dicumentation for many valued contexts.
+The obtained contexts may be used with the ~scale-mv-context-with~ function as described in the documentation for many valued contexts.
 
 
