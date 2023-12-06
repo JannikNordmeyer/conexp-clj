@@ -102,7 +102,7 @@
     (let [read-comma-line (fn []
                             (try
                               (let [line (get-line)]
-                                (read-string (str "(" line ")")))
+                                (clojure.string/split line #","))
                               (catch java.io.EOFException _
                                 nil))),
           attributes      (read-comma-line),
