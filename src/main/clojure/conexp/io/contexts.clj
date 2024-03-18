@@ -672,6 +672,24 @@
               (str "The input file does not match the schema given at " schema-file "."))
       (json->ctx file-content))))
 
+(defn make-FIMI-compatible
+  [ctx]
+  (let [objs (into [] (objects ctx))
+        attrs (into [] (attributes ctx))
+        incidence (incidence ctx)
+        
+        new-objs (range (count objs))
+        new-attrs (range (count attrs))
+        new-incidence (for [t incidence] [(.indexOf objs (first t)) 
+                        (.indexOf attrs (last t))])]
+    (make-context new-objs
+                  new-attrs
+                  new-incidence))
+)
+
+
+
+
 ;;; TODO
 
 ;; slf
