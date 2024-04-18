@@ -4,30 +4,30 @@
 * Attribute Exploration
 
 We want to describe the facilities ~conexp-clj~ is offering for attribute
-exploration.  For this, let us start with some simple (and vapid) example.
+exploration.  For this, let us start with a simple example context:
 
 #+begin_src clojure :exports both
-(def ctx (make-context-from-matrix ['a 'b 'c]
-                                   [1 2 3]
-                                   [0 1 0
-                                    1 1 0
-                                    1 0 1]))
+(def ctx (make-context 	#{"Crow" "Cod"} 
+			#{"V" "C" "B" "E" "W" "F"} 
+			#{["Crow" "V"] ["Crow" "C"] ["Crow" "B"] ["Crow" "E"] ["crow" "W"] ["Crow" "F"]
+                          ["Cod" "V"] ["Cod" "E"]}))
 ctx
 #+end_src
 
+For convenience the attributes are abbreviations of "Vertebrate", "Can Fly", "Beak", "Lays Eggs", "Warm-blooded" and "Feathers", in order.
+
 #+RESULTS:
 #+begin_src text
-  |1 2 3 
---+------
-a |. x . 
-b |x x . 
-c |x . x 
 
+     |B C E F V W 
+-----+------------
+Cod  |. . x . x . 
+Crow |x x x x x . 
 #+end_src
 
 To explore a context without any other features, just call
 ~explore-attributes~ with the corresponding context as its only
-argument
+argument:
 
 #+begin_src clojure :eval never
 (explore-attributes :context ctx)
@@ -37,23 +37,101 @@ Exploration now proceeds as follows:
 
 #+begin_src text
 user=> (explore-attributes :context ctx)
-Does the implication (#{3} ==> #{1}) hold? no
+Does the implication (#{} ⟶  #{E V}) hold? no
 counterexample> object
-Please enter new object: d
+Please enter new object: Crab
 counterexample> attributes
-Please enter the attributes the new object should have: 3
+Please enter the attributes the new object should have: "E"
 counterexample> q
 Do you want to give another counterexample? no
-Does the implication (#{2 3} ==> #{1}) hold? yes
-{:implications #{(#{2 3} ==> #{1})},
- :context
-   |1 2 3
- --+------
- a |. x .
- b |x x .
- c |x . x
- d |. . x
+
+Does the implication (#{} ⟶  #{E}) hold? no
+counterexample> object
+Please enter new object: Tiger
+counterexample> attributes
+Please enter the attributes the new object should have: "V" "W"
+counterexample> q
+Do you want to give another counterexample? no
+
+Does the implication (#{W} ⟶  #{V}) hold? yes
+
+Does the implication (#{B} ⟶  #{E C F V}) hold? no
+counterexample> object
+Please enter new object: Ostrich
+counterexample> attributes
+Please enter the attributes the new object should have: "B" "E" "F" "V" "W"
+counterexample> q
+Do you want to give another counterexample? no
+
+Does the implication (#{B} ⟶  #{E F V}) hold? no
+counterexample> object
+Please enter new object: Platypus
+counterexample> attributes
+Please enter the attributes the new object should have: "B" "E" "V" "W"
+counterexample> q
+Do you want to give another counterexample? no
+
+Does the implication (#{B} ⟶  #{E V}) hold? no
+counterexample> object
+Please enter new object: Octopus
+counterexample> attributes
+Please enter the attributes the new object should have: "B" "E" 
+counterexample> q
+Do you want to give another counterexample? no
+
+Does the implication (#{B} ⟶  #{E}) hold? yes
+
+Does the implication (#{F} ⟶  #{E B V}) hold? no
+counterexample> object
+Please enter new object: Velociraptor
+counterexample> attributes
+Please enter the attributes the new object should have: "E" "F" "V"
+counterexample> q
+Do you want to give another counterexample? no
+
+Does the implication (#{F} ⟶  #{E V}) hold? yes
+
+Does the implication (#{C} ⟶  #{E F B V}) hold? no
+counterexample> object
+Please enter new object: Bat
+counterexample> attributes
+Please enter the attributes the new object should have: "C" "V" "W"
+counterexample> q
+Do you want to give another counterexample? no
+
+Does the implication (#{C} ⟶  #{V}) hold? no
+counterexample> object
+Please enter new object: Dragonfly
+counterexample> attributes
+Please enter the attributes the new object should have: "C" "E"
+counterexample> q
+Do you want to give another counterexample? no
+
+Does the implication (#{E V W} ⟶  #{B}) hold? yes
+
+Does the implication (#{E C V} ⟶  #{F B}) hold? yes
+
+Does the implication (#{E C B} ⟶  #{F V}) hold? yes
+
+{:implications
+ #{(#{"E" "C" "B"} ⟶  #{"F" "V"}) (#{"W"} ⟶  #{"V"})
+   (#{"B"} ⟶  #{"E"}) (#{"E" "C" "V"} ⟶  #{"F" "B"})
+   (#{"E" "V" "W"} ⟶  #{"B"}) (#{"F"} ⟶  #{"E" "V"})},
+ :context              
+	     |B C E F V W 
+-------------+------------
+Bat          |. x . . x x 
+Crab         |. . x . . . 
+Dragonfly    |. x x . . . 
+Octopus      |x . x . . . 
+Ostrich      |x . x x x x 
+Platypus     |x . x . x x 
+Tiger        |. . . . x x 
+Velociraptor |. . x x x . 
+Cod          |. . x . x . 
+Crow         |x x x x x . 
 }
+
 user=>
 #+end_src
 
