@@ -138,6 +138,45 @@ user=>
 The result returned by ~explore-attributes~ is a hash-map with the implications
 found, together with the resulting context.
 
+You can enter ~help~ to get a list of all available inputs:
+
+#+begin_src clojure :exports both
+Type «abort» to abort exploration.
+Any other command can be abbreviated, as long as this is unambigious.
+  complete-example
+    -> Adds all attributes, which are not positive, to the negatives.
+  saturate-partial-example
+    -> Saturates the given partial counterexample.
+  help
+    -> Prints help prompt.
+  quit
+    -> Quit the REPL, if the given counterexample is valid.
+  attributes
+    -> Enter all attributes the object has.
+  object
+    -> Enter a name for the new object.
+  clear
+    -> Clears the current state.
+  knowledge
+    -> Prints the currently known implications (including background knowledge).
+  positives
+    -> Give some attributes the object definitively has.
+  done
+    -> Alias for «quit»
+  implication
+    -> Prints the current implication.
+  state
+    -> Prints the current state.
+  check-counterexample
+    -> Checks the given counterexample for being valid.
+  negatives
+    -> Give some attributes the object definitively has not.
+  context
+    -> Prints the current context.
+#+end_src
+
+You can also type ~abort~ to cancel the exploration.
+
 It is also possible to add background knowledge to the exploration. Just give,
 as second argument, a set of valid implications.  This may short cut some steps
 of the exploration, up to the point that no interaction is required:
