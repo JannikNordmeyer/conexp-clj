@@ -268,7 +268,7 @@
     state))
 
 (define-repl-fn done
-  "Alias for «quit»"
+  "Alias for \"quit\""
   (run-repl-command 'quit state))
 
 (define-repl-fn clear
@@ -311,15 +311,14 @@
   state)
 
 (define-repl-fn help
-  "Prints help."
+  "Prints help prompt."
   (let [commands (suitable-repl-commands "")]
-    (println "Type «abort» to abort exploration.")
+    (println "Type \"abort\" to abort exploration.")
     (println "Any other command can be abbreviated, as long as this is unambigious.")
     (doseq [cmd commands]
       (println (str "  " cmd))
       (println (str "    -> " (help-repl-command cmd))))
     state))
-
 
 ;;; Exploration Interface
 
@@ -441,6 +440,13 @@
                (objects possible-context))
             "Given contexts must coincide on the set of objects")
     ;; dispatch
+
+    (println "Exploring the following context:")
+    (println context)
+    (println "If an implication does not hold, you will be asked to construct a counterexample.")
+    (println "Enter \"help\" to see a list of all availabe 
+              commands to construct an object that contradicts the implication.")
+    (println "Enter \"abort\" to exit the exploration.")
     (if incomplete-counterexamples
       (explore-attributes-with-incomplete-counterexamples
          possible-context
@@ -629,3 +635,31 @@
 ;;;
 
 true
+
+
+
+;(use 'conexp.fca.exploration)
+
+(def V "Vertebrate")
+(def C "Can Fly")
+(def B "Beak")
+(def E "Lays Eggs")
+(def W "Warmblooded")
+(def F "Feathers")
+
+;(def ctx (make-context #{} #{"Vertebrate" "Sauropsid" "Bird" "Lays Eggs" "Warmblooded" "Feathers"} #{}))
+
+(def ctx (make-context #{"Crow" "Cod"} #{"V" "C" "B" "E" "W" "F"} #{["Crow" "V"] ["Crow" "C"] ["Crow" "B"] ["Crow" "E"] ["crow" "W"] ["Crow" "F"]
+                                                                    ["Cod" "V"] ["Cod" "E"]}))
+
+(def ctx-explored (make-context #{"Crab" "Crocodile" "Patypus" "Tiger" "Velociraptor" "Cod" "Crow"}
+                                #{"Vertebrate" "Sauropsid" "Bird" "Lays Eggs" "Warmblooded" "Feathers"}
+                                #{["Crow" "Vertebrate"] ["Crow" "Sauropsid"] ["Crow" "Bird"] ["Crow" "Lays Eggs"] ["crow" "Warmblooded"] ["Crow" "Feathers"]
+                                  ["Cod" "Vertebrate"] ["Cod" "Lays Eggs"]
+                                  ["Crab" "Lays Eggs"]
+                                  ["Crocodile" "Lays Eggs"] ["Crocodile" "Sauropsid"] ["Crocodile" "Vertebrate"]
+                                  ["Patypus" "Lays Eggs"] ["Patypus" "Warmblooded"] ["Patypus" "Vertebrate"]
+                                  ["Tiger" "Vertebrate"] ["Tiger" "Warmblooded"]
+                                  ["Velociraptor" "Feathers"] ["Velociraptor" "Lays Eggs"] ["Velociraptor" "Sauropsid"] ["Velociraptor" "Vertebrate"]}))
+
+;(explore-attributes :context ctx)
