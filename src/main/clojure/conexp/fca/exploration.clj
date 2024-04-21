@@ -120,7 +120,7 @@
   (when-not (yes-or-no? (str "Does the implication "
                              (print-str (:implication initial-state))
                              " hold? "))
-    (println "Then please provide a counterexample")
+    (println "Please construct a counterexample:")
     (try
       (loop [counterexamples []]
         (let [counterexample  (counterexample-from-expert initial-state result-fns),
@@ -189,7 +189,7 @@
         (assoc :negatives (difference attributes new-attributes)))))
 
 (define-repl-fn positives
-  "Give some attributes the object definitively has."
+  "Enter attributes the object definitively has."
   (let [positives (ask (str "Please enter attributes the new object definitively has: ")
                        #(read-string (str "#{" (read-line) "}"))
                        #(and (subset? % attributes)
@@ -200,8 +200,8 @@
     (assoc state :positives positives)))
 
 (define-repl-fn negatives
-  "Give some attributes the object definitively has not."
-  (let [negatives (ask (str "Please enter attributes the new object definitively has not: ")
+  "Enter  attributes the object definitively does not have."
+  (let [negatives (ask (str "Please enter attributes the new object definitively does not have: ")
                        #(read-string (str "#{" (read-line) "}"))
                        #(and (subset? % attributes)
                              (not (exists [m (:positives state)]
@@ -444,8 +444,7 @@
     (println "Exploring the following context:")
     (println context)
     (println "If an implication does not hold, you will be asked to construct a counterexample.")
-    (println "Enter \"help\" to see a list of all availabe 
-              commands to construct an object that contradicts the implication.")
+    (println "Enter \"help\" to see a list of all availabe commands to construct an object that contradicts the implication.")
     (println "Enter \"abort\" to exit the exploration.")
     (if incomplete-counterexamples
       (explore-attributes-with-incomplete-counterexamples
