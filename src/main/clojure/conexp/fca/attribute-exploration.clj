@@ -14,6 +14,7 @@
             [clojure.string :as str]))
 
 (def abort "abort")
+(def return "return")
 (def yes "yes")
 (def no "no")
 
@@ -40,16 +41,20 @@
 (defn ask-counterexample [ctx current-impl true-impls]
   "Repeatedly asks for a new object and its attributes, until a valid counterexample is input."
   (loop []
-    (let [object (str (ask "\nEnter the name of the new object:"
-                           #(read-string (str (read-line)))))
-          attributes (into #{} (str/split (str (ask (str "\nEnter a collection of attributes " 
-                                                         object " is incident to :")
-                                                    #(str (read-line))))
-                                          #" "))]
-
-      (if (verify-counterexample ctx current-impl true-impls [object attributes])
-        [object attributes]
-        (recur))))
+    (let [obj-response (str (ask "\nEnter the name of the new object:"
+                                 #(read-string (str (read-line)))))]
+      (cond 
+        (= obj-response abort) abort
+        (= obj-response return) return
+        :else (let [attr-response (into #{} (str/split (str (ask (str "\nEnter a collection of attributes " 
+                                                                      obj-response " is incident to:")
+                                                                 #(str (read-line))))
+                                                       #" "))]
+                (cond 
+                  (= attr-response #{abort}) abort
+                  (= attr-response #{return}) return
+                  (verify-counterexample ctx current-impl true-impls [obj-response attr-response]) [obj-response attr-response]
+                  :else (recur))))))
 )
 
 (defn abort-exploration [ctx true-impls]
@@ -86,11 +91,16 @@
             (= input yes) (recur current-ctx
                                  (conj true-impls next-impl))
 
-            (= input no) (let [[new-obj new-attrs] (ask-counterexample current-ctx next-impl true-impls)]
-                           (recur (make-context (conj (objects current-ctx) new-obj)
-                                                (attributes current-ctx)
-                                                (set/union (incidence current-ctx) (into #{} (for [attr new-attrs] [new-obj attr]))))
-                                  true-impls))
+            (= input no) (let [response (ask-counterexample current-ctx next-impl true-impls)]
+                           (cond
+                             (= response abort) (abort-exploration current-ctx true-impls)
+                             (= response return) (recur current-ctx true-impls)
+                             :else (recur (make-context (conj (objects current-ctx) 
+                                                              (first response))
+                                                        (attributes current-ctx)
+                                                        (set/union (incidence current-ctx) 
+                                                                   (into #{} (for [attr (second response)] [(first response) attr]))))
+                                          true-impls)))
             :else (do (println "\nInvalid Input.")
                       (recur current-ctx true-impls))
               )))
