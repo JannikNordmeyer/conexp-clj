@@ -46,7 +46,7 @@
       (cond 
         (= obj-response abort) abort
         (= obj-response return) return
-        :else (let [attr-response (into #{} (str/split (str (ask (str "\nEnter a collection of attributes " 
+        :else (let [attr-response (into #{} (str/split (str (ask (str "\nEnter all attributes " 
                                                                       obj-response " is incident to:")
                                                                  #(str (read-line))))
                                                        #" "))]
@@ -108,7 +108,10 @@
         [true-impls current-ctx])))
 )
 
+(defmulti explore (fn [input] (class input)))
 
+(defmethod explore conexp.fca.contexts.Formal-Context [input] (explore-attributes input))
+(defmethod explore clojure.lang.PersistentHashSet [input] (explore-attributes (make-context #{} input #{})))
 
 
 
