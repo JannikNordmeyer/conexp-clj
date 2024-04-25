@@ -10,37 +10,55 @@
   (:use conexp.base
         conexp.fca.contexts
         conexp.fca.implications)
-  (:require [clojure.set :as set]))
+  (:require [clojure.set :as set]
+            [clojure.string :as str]))
+
+(def abort "abort")
+(def yes "yes")
+(def no "no")
 
 
 (defn verify-counterexample [ctx current-impl true-impls counterexample]
+  "Returns false and prints explanatory text, if the counterexample is consistent with the current state of exploration.
+   Returns true otherwise."
   (let [[obj attrs] counterexample]
 
     (if (not (subset? attrs (attributes ctx)))
-      (println "The new object contains unknown attributes.")
+      (println "\nThe new object contains unknown attributes.")
 
       (let [contradicted-impls (filter #(not (respects? attrs %)) true-impls )]
       (if (not (empty? contradicted-impls))
-        (do (println "Your example does not respect the following confirmed implications:")
+        (do (println "\nYour example does not respect the following confirmed implications:")
             (doseq [impl contradicted-impls]
               (println impl)))
         (if (respects? attrs current-impl)
-          (println "Your example does not contradict the given implication.")
+          (println "\nYour example does not contradict the given implication.")
           true)))))
 )
 
 
-
 (defn ask-counterexample [ctx current-impl true-impls]
+  "Repeatedly asks for a new object and its attributes, until a valid counterexample is input."
   (loop []
     (let [object (str (ask "\nEnter the name of the new object:"
                            #(read-string (str (read-line)))))
-          attributes (load-string (str (ask (str "\nEnter a collection of attributes " 
-                                               object " is incident to:")
-                                          #(read-string (str (read-line))))))]
+          attributes (into #{} (str/split (str (ask (str "\nEnter a collection of attributes " 
+                                                         object " is incident to :")
+                                                    #(str (read-line))))
+                                          #" "))]
+
       (if (verify-counterexample ctx current-impl true-impls [object attributes])
         [object attributes]
         (recur))))
+)
+
+(defn abort-exploration [ctx true-impls]
+  "Prints abort messages."
+  (println "\nThe Exploration has been aborted.")
+  (println "This is the most recent state of the explored context:")
+  (println ctx)
+  (println "Confirmed Implications:")
+  (println true-impls)
 )
 
 
@@ -60,24 +78,25 @@
         (println "Currently confirmed Implications:")
         (println true-impls)
 
-        (if (yes-or-no? (str "\nDoes the implication " next-impl " hold? (yes/no)"))
-          (recur current-ctx
-                 (conj true-impls next-impl))
-          (let [[new-obj new-attrs] (ask-counterexample current-ctx next-impl true-impls)]
+        (let [input (str (ask (str "\nDoes the implication " next-impl " hold? (yes/no)")
+                              #(read-string (str (read-line)))))]
+          (cond
+            (= input abort) (abort-exploration current-ctx true-impls)
 
-            (recur (make-context (conj (objects current-ctx) new-obj)
-                                 (attributes current-ctx)
-                                 (set/union (incidence current-ctx) (into #{} (for [attr new-attrs] [new-obj attr]))))
-                   true-impls))))
+            (= input yes) (recur current-ctx
+                                 (conj true-impls next-impl))
 
-        [true-impls current-ctx]
+            (= input no) (let [[new-obj new-attrs] (ask-counterexample current-ctx next-impl true-impls)]
+                           (recur (make-context (conj (objects current-ctx) new-obj)
+                                                (attributes current-ctx)
+                                                (set/union (incidence current-ctx) (into #{} (for [attr new-attrs] [new-obj attr]))))
+                                  true-impls))
+            :else (do (println "\nInvalid Input.")
+                      (recur current-ctx true-impls))
+              )))
+
+        [true-impls current-ctx])))
 )
-
-
-)
-  )
-)
-
 
 
 
