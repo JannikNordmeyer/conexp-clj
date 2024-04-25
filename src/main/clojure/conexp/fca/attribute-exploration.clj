@@ -13,13 +13,34 @@
   (:require [clojure.set :as set]))
 
 
-(defn ask-counterexample []
-  (let [object (str (ask "\nEnter the name of the new object:"
-                         #(read-string (str (read-line)))))
-        attributes (load-string (str (ask (str "\nEnter a collection of attributes " 
+(defn verify-counterexample [ctx current-impl true-impls counterexample]
+  (let [[obj attrs] counterexample]
+
+    (if (not (subset? attrs (attributes ctx)))
+      (println "The new object contains unknown attributes.")
+
+      (let [contradicted-impls (filter #(not (respects? attrs %)) true-impls )]
+      (if (not (empty? contradicted-impls))
+        (do (println "Your example does not respect the following confirmed implications:")
+            (doseq [impl contradicted-impls]
+              (println impl)))
+        (if (respects? attrs current-impl)
+          (println "Your example does not contradict the given implication.")
+          true)))))
+)
+
+
+
+(defn ask-counterexample [ctx current-impl true-impls]
+  (loop []
+    (let [object (str (ask "\nEnter the name of the new object:"
+                           #(read-string (str (read-line)))))
+          attributes (load-string (str (ask (str "\nEnter a collection of attributes " 
                                                object " is incident to:")
                                           #(read-string (str (read-line))))))]
-    [object attributes])
+      (if (verify-counterexample ctx current-impl true-impls [object attributes])
+        [object attributes]
+        (recur))))
 )
 
 
@@ -42,7 +63,7 @@
         (if (yes-or-no? (str "\nDoes the implication " next-impl " hold? (yes/no)"))
           (recur current-ctx
                  (conj true-impls next-impl))
-          (let [[new-obj new-attrs] (ask-counterexample)]
+          (let [[new-obj new-attrs] (ask-counterexample current-ctx next-impl true-impls)]
 
             (recur (make-context (conj (objects current-ctx) new-obj)
                                  (attributes current-ctx)
