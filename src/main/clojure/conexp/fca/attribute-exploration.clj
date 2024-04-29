@@ -24,17 +24,19 @@
    Returns true otherwise."
   (let [[obj attrs] counterexample]
 
-    (if (not (subset? attrs (attributes ctx)))
-      (println "\nThe new object contains unknown attributes.")
+    (if (contains? (objects ctx) obj)
+      (println (str "\nThe context already contains an object named " obj "."))
+      (if (not (subset? attrs (attributes ctx)))
+        (println "\nThe new object contains unknown attributes.")
 
-      (let [contradicted-impls (filter #(not (respects? attrs %)) true-impls )]
-      (if (not (empty? contradicted-impls))
-        (do (println "\nYour example does not respect the following confirmed implications:")
-            (doseq [impl contradicted-impls]
-              (println impl)))
-        (if (respects? attrs current-impl)
-          (println "\nYour example does not contradict the given implication.")
-          true)))))
+        (let [contradicted-impls (filter #(not (respects? attrs %)) true-impls )]
+          (if (not (empty? contradicted-impls))
+            (do (println "\nYour example does not respect the following confirmed implications:")
+              (doseq [impl contradicted-impls]
+                (println impl)))
+            (if (respects? attrs current-impl)
+              (println "\nYour example does not contradict the given implication.")
+              true))))))
 )
 
 
@@ -46,10 +48,11 @@
       (cond 
         (= obj-response abort) abort
         (= obj-response return) return
-        :else (let [attr-response (into #{} (str/split (str (ask (str "\nEnter all attributes " 
-                                                                      obj-response " is incident to:")
-                                                                 #(str (read-line))))
-                                                       #" "))]
+        :else (let [attr-response (disj (into #{} (str/split (str (ask (str "\nEnter all attributes " 
+                                                                         obj-response " is incident to:")
+                                                                    #(str (read-line))))
+                                                          #" "))
+                                        "")];remove empty string to enable input of no attributes
                 (cond 
                   (= attr-response #{abort}) abort
                   (= attr-response #{return}) return
