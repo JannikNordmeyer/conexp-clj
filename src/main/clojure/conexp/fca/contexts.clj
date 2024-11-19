@@ -911,6 +911,16 @@
       (reduce (fn [a b] (op a (if (list? b) (logical-attribute-derivation ctx b) b))) 
               (-> (if (list? f) (logical-attribute-derivation ctx f) f) op) other))))
 
-;;;
+(defn- shorten [string max-len]
+  "Receives a String and returns an Abbreviation up to *max-len* characters."
+  (if (< max-len (count string))
+    ( str(subs string 0 max-len) "...")
+    string)
+)
 
-true
+(defn short-ctx [ctx max-len]
+  "Returns the same Context with its object and attribute names shortened to *max-len* characters."
+  (make-context (map #(shorten % max-len) (objects ctx))
+                (map #(shorten % max-len) (attributes ctx))
+                (map #(vector (shorten (first %) max-len) (shorten (second %) max-len)) (incidence-relation ctx)))
+)
