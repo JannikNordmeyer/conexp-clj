@@ -920,7 +920,7 @@
 
 (defn short-ctx [ctx max-len]
   "Returns the same Context with its object and attribute names shortened to *max-len* characters."
-  (make-context (map #(shorten % max-len) (objects ctx))
-                (map #(shorten % max-len) (attributes ctx))
-                (map #(vector (shorten (first %) max-len) (shorten (second %) max-len)) (incidence-relation ctx)))
+  (println (make-context (map #(shorten % max-len) (objects ctx))
+                         (map #(shorten % max-len) (attributes ctx))
+                         (map #(vector (shorten (first %) max-len) (shorten (second %) max-len)) (incidence-relation ctx))))
 )
