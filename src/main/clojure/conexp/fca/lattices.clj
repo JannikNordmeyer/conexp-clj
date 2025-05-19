@@ -17,6 +17,44 @@
 
 ;;; Datastructure
 
+(deftype Partial-Lattice [base-set order-function inf sup]
+  Object
+  (equals [this other]
+    (and (= (class this) (class other))
+         (= (.base-set this) (.base-set ^Lattice other))
+         (let [order-this (.order this),
+               order-other (.order other)]
+           (or (= order-this order-other)
+               (forall [x (.base-set this)
+                        y (.base-set this)]
+                 (<=> (order-this x y)
+                      (order-other x y)))))))
+  (hashCode [this]
+    (hash-combine-hash Lattice base-set))
+  ;;
+  Order
+  (base-set [this] base-set)
+  (order [this] nil))
+
+
+(defn fat? [plat x k]
+  "Verifies Whether the Size of the Downset of a Node *x* is Greater than or Equal to *k*."
+)
+
+(defn thin? [plat x k]
+  "Verifies Whether the Size of the Downset of a Node *x* is smaller than *k*."
+  (not (fat? plat x k))
+)
+
+(defn block-decomposition [plat k]
+  "Returns a Block Decomposition of a Partial Lattice with Block Size *k*."
+)
+
+(defn make-partial-lattice [base-set covering-relation]
+
+
+)
+
 (deftype Lattice [base-set order-function inf sup]
   Object
   (equals [this other]
