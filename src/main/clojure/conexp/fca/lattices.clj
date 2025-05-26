@@ -17,28 +17,23 @@
 
 ;;; Datastructure
 
-(deftype Partial-Lattice [base-set order-function inf sup]
-  Object
-  (equals [this other]
-    (and (= (class this) (class other))
-         (= (.base-set this) (.base-set ^Lattice other))
-         (let [order-this (.order this),
-               order-other (.order other)]
-           (or (= order-this order-other)
-               (forall [x (.base-set this)
-                        y (.base-set this)]
-                 (<=> (order-this x y)
-                      (order-other x y)))))))
-  (hashCode [this]
-    (hash-combine-hash Lattice base-set))
-  ;;
-  Order
-  (base-set [this] base-set)
-  (order [this] nil))
+
+;utility
+(defn minimal-node[nodes order-fn]
+  "Returns a Minimal Element from a Set of Objects Given an Order Function."
+  (reduce (fn [min-node node]
+            (if (order-fn node min-node);Chooses a node, then updated the node whenever a lesser one is found
+              node
+              min-node))
+          (first nodes)
+          (rest nodes))
+)
+
 
 
 (defn fat? [plat x k]
   "Verifies Whether the Size of the Downset of a Node *x* is Greater than or Equal to *k*."
+  (<= k (count (order-ideal plat #{x})))
 )
 
 (defn thin? [plat x k]
@@ -46,14 +41,33 @@
   (not (fat? plat x k))
 )
 
+(defn minimal-fat-node [plat k]
+  "Returns a Fat Node from a Partial Lattice, that is Minimal by Lattice Order."
+  (let [fat-nodes (filter #(fat? plat % k) (base-set plat))]
+    (minimal-node fat-nodes (order plat)))
+)
+
+
+#_
 (defn block-decomposition [plat k]
   "Returns a Block Decomposition of a Partial Lattice with Block Size *k*."
+  (loop [remaining (base-set plat)
+         current-block-header (minimal-fat-node plat k)
+         blocks []]
+    (if current-block-header
+      (recur [])))
 )
 
 (defn make-partial-lattice [base-set covering-relation]
 
 
 )
+
+
+;(use 'conexp.io.contexts)
+;(def ctx (read-context "testing-data/Living-Beings-and-Water.ctx"))
+;(def lat (concept-lattice ctx))
+;(use 'conexp.gui.draw)
 
 (deftype Lattice [base-set order-function inf sup]
   Object
@@ -76,6 +90,8 @@
     (fn order-fn
       ([pair] (order-function (first pair) (second pair)))
       ([x y] (order-function x y)))))
+
+
 
 (defn inf
   "Returns a function computing the infimum in lattice."
