@@ -31,37 +31,7 @@
 
 
 
-(defn fat? [plat x k]
-  "Verifies Whether the Size of the Downset of a Node *x* is Greater than or Equal to *k*."
-  (<= k (count (order-ideal plat #{x})))
-)
 
-(defn thin? [plat x k]
-  "Verifies Whether the Size of the Downset of a Node *x* is smaller than *k*."
-  (not (fat? plat x k))
-)
-
-(defn minimal-fat-node [plat k]
-  "Returns a Fat Node from a Partial Lattice, that is Minimal by Lattice Order."
-  (let [fat-nodes (filter #(fat? plat % k) (base-set plat))]
-    (minimal-node fat-nodes (order plat)))
-)
-
-
-#_
-(defn block-decomposition [plat k]
-  "Returns a Block Decomposition of a Partial Lattice with Block Size *k*."
-  (loop [remaining (base-set plat)
-         current-block-header (minimal-fat-node plat k)
-         blocks []]
-    (if current-block-header
-      (recur [])))
-)
-
-(defn make-partial-lattice [base-set covering-relation]
-
-
-)
 
 
 ;(use 'conexp.io.contexts)
@@ -220,7 +190,62 @@
       (illegal-argument "Given arguments do not describe a lattice."))
     lattice))
 
-;;; Standard Lattice Theory
+
+
+
+
+(defn fat? [plat x k]
+  "Verifies Whether the Size of the Downset of a Node *x* is Greater than or Equal to *k*."
+  (<= k (count (order-ideal plat #{x})))
+)
+
+(defn thin? [plat x k]
+  "Verifies Whether the Size of the Downset of a Node *x* is smaller than *k*."
+  (not (fat? plat x k))
+)
+
+(defn minimal-fat-node [plat k]
+  "Returns a Fat Node from a Partial Lattice, that is Minimal by Lattice Order."
+  (let [fat-nodes (filter #(fat? plat % k) (base-set plat))]
+    (minimal-node fat-nodes (order plat)))
+)
+
+
+
+
+
+(defn block-decomposition [plat k]
+  "Returns a Block Decomposition of a Partial Lattice with Block Size *k*."
+  (loop [remaining (base-set plat)
+         current-plat plat
+         current-block-header (minimal-fat-node plat k)
+         blocks []]
+    (if current-block-header
+      (let [new-remaining (clojure.set/difference remaining (order-ideal current-plat #{current-block-header}))
+            new-plat (make-lattice-nc new-remaining (order plat))]
+        (recur new-remaining
+               new-plat
+               (minimal-fat-node new-plat k)
+               (conj blocks (order-ideal current-plat #{current-block-header}))))
+      (conj blocks remaining);add residual block
+))
+)
+
+
+
+
+(defn make-partial-lattice [base-set covering-relation]
+
+
+)
+
+
+
+
+
+
+
+
 
 (defn dual-lattice
   "Dualizes given lattice lat."
