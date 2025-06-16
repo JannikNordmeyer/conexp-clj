@@ -215,7 +215,8 @@
 
 
 (defn block-decomposition [plat k]
-  "Returns a Block Decomposition of a Partial Lattice with Block Size *k*."
+  "Returns a Block Decomposition of a Partial Lattice with Block Size *k*.
+   Block are represented as tuples of their block header and all nodes in the block."
   (loop [remaining (base-set plat)
          current-plat plat
          current-block-header (minimal-fat-node plat k)
@@ -226,12 +227,15 @@
         (recur new-remaining
                new-plat
                (minimal-fat-node new-plat k)
-               (conj blocks (order-ideal current-plat #{current-block-header}))))
+               (conj blocks [current-block-header (order-ideal current-plat #{current-block-header})])))
       (conj blocks remaining);add residual block
 ))
 )
 
+(defn local-downset [plat block x]
+  (clojure.set/intersection (order-ideal plat #{x}) (second block))
 
+)
 
 
 (defn make-partial-lattice [base-set covering-relation]
