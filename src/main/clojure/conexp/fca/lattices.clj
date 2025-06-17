@@ -30,6 +30,22 @@
 )
 
 
+(defn order-function-to-set [base-set order-fn]
+  "Accepts a Base Set and an Order Function and Returns an Explicit Set Representation of the Order Relation."
+  (filter #(order-fn (first %) (second %)) (for [x base-set y base-set] [x y]))
+)
+
+
+(defn anonymize-lattice [lat]
+  "Returns a Lattice with the same Order Relation is the Input, but with the Names of 
+   the Nodes Replaced by Numeric Identifiers."
+  (let [nodes (into [] (base-set lat))
+        order-relation  (order-function-to-set (base-set lat) (order lat)) 
+        new-order-relation (for [x order-relation] [(.indexOf nodes (first x)) (.indexOf nodes (second x))])]
+
+    (make-lattice (range (count (base-set lat))) #(.contains new-order-relation [%1 %2])))
+)
+
 
 
 
@@ -37,6 +53,7 @@
 ;(use 'conexp.io.contexts)
 ;(def ctx (read-context "testing-data/Living-Beings-and-Water.ctx"))
 ;(def lat (concept-lattice ctx))
+;(def testlat (anonymize-lattice lat))
 ;(use 'conexp.gui.draw)
 
 (deftype Lattice [base-set order-function inf sup]
