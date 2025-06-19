@@ -1,4 +1,4 @@
-;; Copyright ⓒ the conexp-clj developers; all rights reserved.
+;; Copyright â the conexp-clj developers; all rights reserved.
 ;; The use and distribution terms for this software are covered by the
 ;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
 ;; which can be found in the file LICENSE at the root of this distribution.
@@ -12,7 +12,8 @@
         conexp.math.algebra
         conexp.fca.contexts
         conexp.fca.posets)
-  (:require [clojure.set :refer [difference union subset? intersection]])
+  (:require [clojure.set :refer [difference union subset? intersection]]
+            [clojure.math :as math])
   (:gen-class))
 
 ;;; Datastructure
@@ -36,25 +37,8 @@
 )
 
 
-(defn anonymize-lattice [lat]
-  "Returns a Lattice with the same Order Relation is the Input, but with the Names of 
-   the Nodes Replaced by Numeric Identifiers."
-  (let [nodes (into [] (base-set lat))
-        order-relation  (order-function-to-set (base-set lat) (order lat)) 
-        new-order-relation (for [x order-relation] [(.indexOf nodes (first x)) (.indexOf nodes (second x))])]
-
-    (make-lattice (range (count (base-set lat))) #(.contains new-order-relation [%1 %2])))
-)
 
 
-
-
-
-;(use 'conexp.io.contexts)
-;(def ctx (read-context "testing-data/Living-Beings-and-Water.ctx"))
-;(def lat (concept-lattice ctx))
-;(def testlat (anonymize-lattice lat))
-;(use 'conexp.gui.draw)
 
 (deftype Lattice [base-set order-function inf sup]
   Object
@@ -77,6 +61,7 @@
     (fn order-fn
       ([pair] (order-function (first pair) (second pair)))
       ([x y] (order-function x y)))))
+
 
 
 
@@ -229,11 +214,23 @@
 
 
 
+;############################################################
+
+;testing statements
+;(use 'conexp.io.contexts)
+;(def ctx (read-context "testing-data/Living-Beings-and-Water.ctx"))
+;(def lat (concept-lattice ctx))
+;(def testlat (anonymize-lattice lat))
+;(use 'conexp.gui.draw)
+;(def blocks (block-decomposition testlat 4))
+;(def comps (make-comp-structure testlat))
 
 
 (defn block-decomposition [plat k]
   "Returns a Block Decomposition of a Partial Lattice with Block Size *k*.
-   Block are represented as tuples of their block header and all nodes in the block."
+   The decomposition is represented a a tuple, where the first entry is a dictionary
+   where each block header maps to a set of the nodes in its block, and the second entry
+   is the residual block."
   (loop [remaining (base-set plat)
          current-plat plat
          current-block-header (minimal-fat-node plat k)
@@ -245,7 +242,7 @@
                new-plat
                (minimal-fat-node new-plat k)
                (conj blocks [current-block-header (order-ideal current-plat #{current-block-header})])))
-      (conj blocks remaining);add residual block
+      [(into {} blocks) remaining];add residual block
 ))
 )
 
@@ -254,15 +251,43 @@
 
 )
 
+(defn find-block [block-decomposition node]
+  "Returns the block that contains *node* as a tuple of its header and its nodes."
+  (let [blocks (first block-decomposition)]
 
-(defn make-partial-lattice [base-set covering-relation]
+    (some identity (for [block blocks] (if (.contains (second block) node) block))))
+)
 
 
+;nodes inplemented as triple (index, display-name, block-header)
+
+
+(defn make-comp-structure [lat]
+  "Returns two dictionaries used for the order comparision operation:
+
+  1. A dictionary the maps each block header *h* to a dictionary that maps each node *n* in the lattice to h∧n .
+  2. A dictionary that maps each node in the lattice to its local downset."
+  (let [meet (inf lat)
+        blocks (block-decomposition lat (clojure.math/floor (clojure.math/sqrt (count (base-set lat)))))]
+
+    [(into {} (for [header (keys (first blocks))]  [header (into {} (for [node (base-set lat)] [node (meet header node)]))]))
+
+     (into {} (for [node (base-set lat)] [node (local-downset lat (find-block blocks node) node)]))])
 )
 
 
 
+(defn partial-lattice-compare [plat comps blocks x y]
 
+  (let [[h_i block] (find-block blocks x)
+        [meets local-downsets] comps]
+
+    (if h_i
+      (let [y_i (get (get meets h_i) y)]
+        (if (.contains block y_i)
+          (if (.contains (get local-downsets y_i) x) true
+                                                     false)))))
+)
 
 
 
@@ -574,6 +599,16 @@
 )
 
 
+
+(defn anonymize-lattice [lat]
+  "Returns a Lattice with the same Order Relation is the Input, but with the Names of 
+   the Nodes Replaced by Numeric Identifiers."
+  (let [nodes (into [] (base-set lat))
+        order-relation  (order-function-to-set (base-set lat) (order lat)) 
+        new-order-relation (for [x order-relation] [(.indexOf nodes (first x)) (.indexOf nodes (second x))])]
+
+    (make-lattice (range (count (base-set lat))) #(.contains new-order-relation [%1 %2])))
+)
 ;;;
 
 nil
