@@ -218,12 +218,18 @@
 
 ;testing statements
 ;(use 'conexp.io.contexts)
-;(def ctx (read-context "testing-data/Living-Beings-and-Water.ctx"))
+;(def ctx (read-context "testing-data/Brunson-Club.ctx"))
 ;(def lat (concept-lattice ctx))
 ;(def testlat (anonymize-lattice lat))
 ;(use 'conexp.gui.draw)
-;(def blocks (block-decomposition testlat 4))
+;(def blocks (block-decomposition testlat (clojure.math/floor (clojure.math/sqrt (count (base-set testlat))))))
 ;(def comps (make-comp-structure testlat))
+;(partial-lattice-compare lat comps blocks 12 45)
+
+;(def ctx2 (read-context "testing-data/Brunson-Club.ctx"))
+;(def lat2 (concept-lattice ctx2))
+;(def testlat2 (anonymize-lattice lat2))
+;(block-decomposition testlat2 (clojure.math/floor (clojure.math/sqrt (count (base-set testlat2)))))
 
 
 (defn block-decomposition [plat k]
@@ -252,7 +258,8 @@
 )
 
 (defn find-block [block-decomposition node]
-  "Returns the block that contains *node* as a tuple of its header and its nodes."
+  "Returns the block that contains *node* as a tuple of its header and its nodes.
+   Returns nil, if the node is in the residual block, or not in the lattice at all."
   (let [blocks (first block-decomposition)]
 
     (some identity (for [block blocks] (if (.contains (second block) node) block))))
@@ -266,7 +273,9 @@
   "Returns two dictionaries used for the order comparision operation:
 
   1. A dictionary the maps each block header *h* to a dictionary that maps each node *n* in the lattice to h∧n .
-  2. A dictionary that maps each node in the lattice to its local downset."
+  2. A dictionary that maps each node in the lattice to its local downset.
+
+  Consult section 5.1"
   (let [meet (inf lat)
         blocks (block-decomposition lat (clojure.math/floor (clojure.math/sqrt (count (base-set lat)))))]
 
@@ -277,18 +286,32 @@
 
 
 
-(defn partial-lattice-compare [plat comps blocks x y]
+;test 7 7
+;local-downset does not work with residual block
 
-  (let [[h_i block] (find-block blocks x)
+(defn partial-lattice-compare [plat comps blocks x y]
+  "Computes the order comparison operation using the data structure produced by *make-comp-structure*.
+   Consult section 5.2"
+(println x y)
+
+  (let [[h_i B_i] (find-block blocks x)
+        [h_i' _] (find-block blocks y)
         [meets local-downsets] comps]
+
 
     (if h_i
       (let [y_i (get (get meets h_i) y)]
-        (if (.contains block y_i)
+        (if (.contains B_i y_i)
           (if (.contains (get local-downsets y_i) x) true
-                                                     false)))))
-)
+                                                     false)
+          false))
 
+      (if (and (not h_i) (not h_i'))
+        (if (.contains (get local-downsets y) x) true
+                                                 false)
+        (if (and (not h_i) h_i') false
+                                 nil))))
+)
 
 
 
