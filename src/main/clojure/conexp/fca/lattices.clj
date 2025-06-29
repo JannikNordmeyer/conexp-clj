@@ -260,9 +260,10 @@
 (defn find-block [block-decomposition node]
   "Returns the block that contains *node* as a tuple of its header and its nodes.
    Returns nil, if the node is in the residual block, or not in the lattice at all."
-  (let [blocks (first block-decomposition)]
-
-    (some identity (for [block blocks] (if (.contains (second block) node) block))))
+  (if (.contains (second block-decomposition) node)
+    [nil (second block-decomposition)]
+    (let [blocks (first block-decomposition)]
+      (some identity (for [block blocks] (if (.contains (second block) node) block)))))
 )
 
 
@@ -286,13 +287,9 @@
 
 
 
-;test 7 7
-;local-downset does not work with residual block
-
 (defn partial-lattice-compare [plat comps blocks x y]
   "Computes the order comparison operation using the data structure produced by *make-comp-structure*.
    Consult section 5.2"
-(println x y)
 
   (let [[h_i B_i] (find-block blocks x)
         [h_i' _] (find-block blocks y)
