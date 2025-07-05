@@ -622,20 +622,17 @@
 )
 
 
-(use 'conexp.io.contexts)
-(use 'conexp.gui.draw)
+
 (defn anonymize-lattice [lat]
   "Returns a Lattice with the same Order Relation is the Input, but with the Names of 
    the Nodes Replaced by Numeric Identifiers."
   (let [nodes (into [] (base-set lat))
-        order-relation  (order-function-to-set (base-set lat) (order lat)) 
-        new-order-relation (for [x order-relation] [(.indexOf nodes (first x)) (.indexOf nodes (second x))])]
-(print "AAA")
-    (make-lattice (range (count (base-set lat))) #(.contains new-order-relation [%1 %2])))
+        ord (order lat)]
+    (make-lattice (range (count (base-set lat))) #(ord (get nodes %1) (get nodes %2))))
 )
-;;;
 
 ;test function:
+(use 'conexp.io.contexts)
 ;"testing-data/Brunson-Club.ctx"
 (defn test-comparisons [ctx-path]
   (let [ctx (read-context ctx-path)
