@@ -108,23 +108,27 @@
   (let [inf (memoize (fn inf [x y]
                        (loop [elements base-set]
                          (let [z (first elements)]
-                           (if (and (order z x)
-                                    (order z y)
-                                    (forall [a base-set]
-                                      (=> (and (order a x) (order a y))
-                                          (order a z))))
-                             z
-                             (recur (rest elements))))))),
+                           (if (empty? elements)
+                             nil
+                             (if (and (order z x)
+                                      (order z y)
+                                      (forall [a base-set]
+                                              (=> (and (order a x) (order a y))
+                                                  (order a z))))
+                               z
+                               (recur (rest elements)))))))),
         sup (memoize (fn sup [x y]
                        (loop [elements base-set]
-                         (let [z (first elements)]
-                           (if (and (order x z)
-                                    (order y z)
-                                    (forall [a base-set]
-                                      (=> (and (order x a) (order y a))
-                                          (order z a))))
-                             z
-                             (recur (rest elements)))))))]
+                         (if (empty? elements)
+                           nil
+                           (let [z (first elements)]
+                             (if (and (order x z)
+                                      (order y z)
+                                      (forall [a base-set]
+                                              (=> (and (order x a) (order y a))
+                                                  (order z a))))
+                               z
+                               (recur (rest elements))))))))]
     (make-lattice-nc base-set order inf sup)))
 
 (defmethod make-lattice-nc [clojure-coll clojure-fn clojure-fn] [base-set inf sup]
