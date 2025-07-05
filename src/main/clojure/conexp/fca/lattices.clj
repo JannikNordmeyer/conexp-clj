@@ -252,10 +252,6 @@
 ))
 )
 
-(defn local-downset [plat block x]
-  (clojure.set/intersection (order-ideal plat #{x}) (second block))
-
-)
 
 (defn find-block [block-decomposition node]
   "Returns the block that contains *node* as a tuple of its header and its nodes.
@@ -264,6 +260,11 @@
     [nil (second block-decomposition)]
     (let [blocks (first block-decomposition)]
       (some identity (for [block blocks] (if (.contains (second block) node) block)))))
+)
+
+(defn local-downset [plat blocks x]
+  (clojure.set/intersection (order-ideal plat #{x}) (second (find-block blocks x)))
+
 )
 
 
@@ -282,7 +283,12 @@
 
     [(into {} (for [header (keys (first blocks))]  [header (into {} (for [node (base-set lat)] [node (meet header node)]))]))
 
-     (into {} (for [node (base-set lat)] [node (local-downset lat (find-block blocks node) node)]))])
+     (into {} (for [node (base-set lat)] [node (local-downset lat blocks node)]))
+
+     
+
+
+     ])
 )
 
 
