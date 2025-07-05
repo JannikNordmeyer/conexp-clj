@@ -243,20 +243,20 @@
    where each block header maps to a set of the nodes in its block, and the second entry
    is the residual block."
   ([plat] 
-     (block-decomposition plat (clojure.math/sqrt (count (base-set plat)))))
-  ([plat k]
+    (block-decomposition plat (clojure.math/floor(clojure.math/sqrt (count (base-set plat))))))
+   ([plat k]
      (loop [remaining (base-set plat)
             current-plat plat
             current-block-header (minimal-fat-node plat k)
             blocks []]
-      (if current-block-header
-        (let [new-remaining (clojure.set/difference remaining (order-ideal current-plat #{current-block-header}))
-              new-plat (make-lattice-nc new-remaining (order plat))]
-          (recur new-remaining
-                 new-plat
-                 (minimal-fat-node new-plat k)
-                 (conj blocks [current-block-header (order-ideal current-plat #{current-block-header})])))
-        [(into {} blocks) remaining];add residual block
+       (if current-block-header
+         (let [new-remaining (clojure.set/difference remaining (order-ideal current-plat #{current-block-header}))
+               new-plat (make-lattice-nc new-remaining (order plat))]
+           (recur new-remaining
+                  new-plat
+                  (minimal-fat-node new-plat k)
+                  (conj blocks [current-block-header (order-ideal current-plat #{current-block-header})])))
+         [(into {} blocks) remaining];add residual block
 )))
 )
 
@@ -287,8 +287,8 @@
 
   Consult section 5.1"
   (let [meet (inf lat)
-        blocks (block-decomposition lat (clojure.math/floor (clojure.math/sqrt (count (base-set lat)))))
-        ;subblocks (for [block blocks] (block-decomposition (make-lattice-nc (second block) (order lat)) ))
+        blocks (block-decomposition lat)
+        subblocks (for [block blocks] (block-decomposition (make-lattice-nc (second block) (order lat)) ))
         ]
 
     [(into {} (for [header (keys (first blocks))]  [header (into {} (for [node (base-set lat)] [node (meet header node)]))]))
