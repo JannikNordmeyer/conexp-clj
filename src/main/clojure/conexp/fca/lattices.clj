@@ -313,6 +313,9 @@
 
 
 
+
+
+
 (defn dual-lattice
   "Dualizes given lattice lat."
   [lat]
@@ -619,16 +622,30 @@
 )
 
 
-
+(use 'conexp.io.contexts)
+(use 'conexp.gui.draw)
 (defn anonymize-lattice [lat]
   "Returns a Lattice with the same Order Relation is the Input, but with the Names of 
    the Nodes Replaced by Numeric Identifiers."
   (let [nodes (into [] (base-set lat))
         order-relation  (order-function-to-set (base-set lat) (order lat)) 
         new-order-relation (for [x order-relation] [(.indexOf nodes (first x)) (.indexOf nodes (second x))])]
-
+(print "AAA")
     (make-lattice (range (count (base-set lat))) #(.contains new-order-relation [%1 %2])))
 )
 ;;;
+
+;test function:
+;"testing-data/Brunson-Club.ctx"
+(defn test-comparisons [ctx-path]
+  (let [ctx (read-context ctx-path)
+        lat (concept-lattice ctx)
+        testlat (anonymize-lattice lat)
+        blocks (block-decomposition testlat (clojure.math/floor (clojure.math/sqrt (count (base-set testlat)))))
+        comps (make-comp-structure testlat)
+        ord (order testlat)]
+    (every? identity (for [x (base-set testlat) y (base-set testlat)] (= (ord x y) (partial-lattice-compare lat comps blocks x y)))))
+)
+
 
 nil
