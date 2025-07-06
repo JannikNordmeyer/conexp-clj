@@ -228,12 +228,7 @@
 ;(use 'conexp.gui.draw)
 ;(def blocks (block-decomposition testlat (clojure.math/floor (clojure.math/sqrt (count (base-set testlat))))))
 ;(def comps (make-comp-structure testlat))
-;(partial-lattice-compare lat comps blocks 12 45)
 
-;(def ctx2 (read-context "testing-data/Brunson-Club.ctx"))
-;(def lat2 (concept-lattice ctx2))
-;(def testlat2 (anonymize-lattice lat2))
-;(block-decomposition testlat2 (clojure.math/floor (clojure.math/sqrt (count (base-set testlat2)))))
 
 
 (defn block-decomposition 
@@ -282,21 +277,28 @@
 (defn make-comp-structure [lat]
   "Returns two dictionaries used for the order comparision operation:
 
-  1. A dictionary the maps each block header *h* to a dictionary that maps each node *n* in the lattice to h∧n .
+  1. A dictionary that maps each block header *h* to a dictionary that maps each node *n* in the lattice to h∧n .
   2. A dictionary that maps each node in the lattice to its local downset.
 
-  Consult section 5.1"
+  Consult section 5.1 
+
+  3. A dictionary that maps each subblock header *h* to a dictionary that maps each node *n* in the block *h* is the header of to h∧n.
+
+  4.
+
+  5."
   (let [meet (inf lat)
-        blocks (block-decomposition lat)
-        subblocks (for [block blocks] (block-decomposition (make-lattice-nc (second block) (order lat)) ))
+        [principal-blocks residual-block] (block-decomposition lat)
+       ; principal-subblocks (apply concat (for [block principal-blocks] (first (block-decomposition (make-lattice-nc (second block) (order lat))))))
         ]
 
-    [(into {} (for [header (keys (first blocks))]  [header (into {} (for [node (base-set lat)] [node (meet header node)]))]))
+    [(into {} (for [header (keys principal-blocks)] [header (into {} (for [node (base-set lat)] [node (meet header node)]))]))
 
-     (into {} (for [node (base-set lat)] [node (local-downset lat blocks node)]))
+     (into {} (for [node (base-set lat)] [node (local-downset lat [principal-blocks residual-block] node)]))
 
-     
-
+     (into {} (for [block principal-blocks 
+                    principal-subblock (first (block-decomposition (make-lattice-nc (second block) (order lat))))]
+                   [(first principal-subblock) (into {} (for [node (second block)] [node (meet (first principal-subblock) node)]))]))
 
      ])
 )
@@ -654,7 +656,7 @@
   (let [ctx (read-context ctx-path)
         lat (concept-lattice ctx)
         testlat (anonymize-lattice lat)
-        blocks (block-decomposition testlat (clojure.math/floor (clojure.math/sqrt (count (base-set testlat)))))
+        blocks (block-decomposition testlat)
         comps (make-comp-structure testlat)
         ord (order testlat)]
     (every? identity (for [x (base-set testlat) y (base-set testlat)] (= (ord x y) (partial-lattice-compare lat comps blocks x y)))))
@@ -662,3 +664,5 @@
 
 
 nil
+
+
