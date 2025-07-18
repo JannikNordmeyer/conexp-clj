@@ -282,9 +282,10 @@
 
   Consult section 5.1 
 
-  3. A dictionary that maps each subblock header *h* to a dictionary that maps each node *n* in the block *h* is the header of to h∧n.
+  3. A dictionary that maps each subblock header *h* to a dictionary that maps each node *n* in the block, that *h* is the header of, to h∧n.
 
-  4.
+  4. A dictionary that maps each subblock header *h* to a dictionary that maps each pair of nodes in the subblock to their meet if it lies
+     within the same subblock, *nil* otherwise. UNTESTED
 
   5."
   (let [meet (inf lat)
@@ -298,7 +299,17 @@
 
      (into {} (for [block principal-blocks 
                     principal-subblock (first (block-decomposition (make-lattice-nc (second block) (order lat))))]
-                   [(first principal-subblock) (into {} (for [node (second block)] [node (meet (first principal-subblock) node)]))]))
+
+                   [(first principal-subblock) 
+                    (into {} (for [node (second block)] [node (meet (first principal-subblock) node)]))]))
+
+     (into {} (for [block principal-blocks 
+                    principal-subblock (first (block-decomposition (make-lattice-nc (second block) (order lat))))]
+
+                   [(first principal-subblock) 
+                    (into {} (for [node1 (second principal-subblock) 
+                                   node2 (second principal-subblock)] [[node1 node2] 
+                                                                       ((inf (make-lattice-nc (second principal-subblock) (order lat))) node1 node2)]))]))
 
      ])
 )
