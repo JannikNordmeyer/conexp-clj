@@ -287,7 +287,7 @@
   4. A dictionary that maps each subblock header *h* to a dictionary that maps each pair of nodes in the subblock to their meet if it lies
      within the same subblock, *nil* otherwise. UNTESTED
 
-  5."
+  5. A dictionary taht maps element *x*, that is in a residual subblock, to its local downset in its respective subblock. UNTESTED"
   (let [meet (inf lat)
         [principal-blocks residual-block] (block-decomposition lat)
        ; principal-subblocks (apply concat (for [block principal-blocks] (first (block-decomposition (make-lattice-nc (second block) (order lat))))))
@@ -311,7 +311,11 @@
                                    node2 (second principal-subblock)] [[node1 node2] 
                                                                        ((inf (make-lattice-nc (second principal-subblock) (order lat))) node1 node2)]))]))
 
-     ])
+     (into {} (for [block principal-blocks]
+                (let [subblock-decomposition (block-decomposition (make-lattice-nc (second block) (order lat)))
+                      residual-subblock (second subblock-decomposition)]
+                  (for [node residual-subblock] 
+                    [node (clojure.set/intersection (order-ideal lat node) residual-subblock)]))))])
 )
 
 
