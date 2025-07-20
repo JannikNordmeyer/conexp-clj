@@ -287,7 +287,7 @@
   4. A dictionary that maps each subblock header *h* to a dictionary that maps each pair of nodes in the subblock to their meet if it lies
      within the same subblock, *nil* otherwise. UNTESTED
 
-  5. A dictionary taht maps element *x*, that is in a residual subblock, to its local downset in its respective subblock. UNTESTED"
+  5. A dictionary that maps element *x*, that is in a residual subblock, to its local downset in its respective subblock. UNTESTED"
   (let [meet (inf lat)
         [principal-blocks residual-block] (block-decomposition lat)
        ; principal-subblocks (apply concat (for [block principal-blocks] (first (block-decomposition (make-lattice-nc (second block) (order lat))))))
@@ -306,7 +306,7 @@
      (into {} (for [block principal-blocks 
                     principal-subblock (first (block-decomposition (make-lattice-nc (second block) (order lat))))]
 
-                   [(first principal-subblock) 
+                   [(first principal-subblock)
                     (into {} (for [node1 (second principal-subblock) 
                                    node2 (second principal-subblock)] [[node1 node2] 
                                                                        ((inf (make-lattice-nc (second principal-subblock) (order lat))) node1 node2)]))]))
@@ -344,8 +344,40 @@
 )
 
 
+(defn meet-in-block [plat block-header comps blocks subblocks x y]
+  "Accepts two nodes *x* and *y* that are both part of the block indicated by *block-header* and returns x∧y if it is in the same block,
+   and returns *nil* if x∧y is not in the same block."
+  (if (or (= x block-header) (= y block-header))
+    (if (partial-lattice-compare plat comps blocks x y)
+       x
+       y)
+    (let [[A B C D E] comps
+          Zi (atom #{})]
 
+      (doseq [c-entry C]
+        (let [subblock-header (first c-entry)
+              representative-map (second c-entry)
+              representative-x (representative-map x)
+              representative-y (representative-map y)]
 
+          ;; Only proceed if both representatives are in this subblock
+          (when (and (.contains ((subblocks subblock-header) representative-x))
+                     (.contains ((subblocks subblock-header) representative-y)))
+            (let [xy-representative-meet ((D subblock-header) [representative-x representative-y])]
+              (when (not (nil? xy-representative-meet))
+                (swap! Zi conj xy-representative-meet))))))
+
+      ;; (c) Check residual subblock
+      (when (and (.contains (keys E) x)
+                 (.contains (keys E) y))
+        (doseq [z (E x)]
+          (when (partial-lattice-compare z y)
+            (swap! Zi conj z))))
+
+      (if (empty? @Zi)
+        nil
+        (reduce #(if (partial-lattice-compare %1 %2) %2 %1) @Zi))))
+)
 
 
 
