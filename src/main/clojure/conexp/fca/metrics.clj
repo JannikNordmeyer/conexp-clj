@@ -32,7 +32,7 @@
              [implications :refer :all]
              [lattices :refer :all]
              [distributivity :refer [birkhoff-downset-completion]]
-             [posets :refer [order-ideal order-filter]]]
+             [posets :refer [order-ideal order-filter poset-upper-neighbours poset-lower-neighbours]]]
             [conexp.math.util :refer [eval-polynomial binomial-coefficient]])
   (:import [conexp.fca.lattices Lattice]
            [java.util ArrayList BitSet]))
@@ -424,6 +424,7 @@
        (* 6 (binomial-coefficient (- n 1) 2)))))
 
 
+;redundant with distributivity degree
 (defn node-distributivity [lat]
   "Returns the sum of the elements-distributivity of the lattice's nodes, normalized against the 
    total number of nodes in the lattice."
@@ -943,6 +944,58 @@
                                 (lattice-order current-lat))
                (conj removal-list (first doubly-irreducibles)))))))
 )
+
+(defn remove-element [lat e]
+  (make-lattice-nc (disj (lattice-base-set lat) e) (lattice-order lat))
+)
+
+(defn exhaustive-DI-removal [lat]
+  (let [di-elements (lattice-doubly-irreducibles lat)]
+    (if (or (empty? di-elements)
+            (distributive? lat))
+    lat
+    (for [e di-elements] (exhaustive-DI-removal (remove-element lat e))) ))
+)
+
+(defn heuristic-DI-removal [lat heuristic]
+  (loop [current-lat lat
+         removal-list []]
+
+  (if (distributive? current-lat)
+    [current-lat removal-list (distributive? current-lat)]
+    (let [sorted-DI-elements (sort #(> (heuristic current-lat %1) (heuristic current-lat %2)) 
+                                   (lattice-doubly-irreducibles current-lat))]
+      (if (empty? sorted-DI-elements)
+        [current-lat removal-list (distributive? current-lat)]
+        (recur (make-lattice-nc (disj (lattice-base-set current-lat) (first sorted-DI-elements))
+                                (lattice-order current-lat))
+               (conj removal-list (first sorted-DI-elements)))))))
+)
+
+
+(defn DI-chain [lat e]
+  (let [di-elements (lattice-doubly-irreducibles lat)]
+    (assert (.contains di-elements e) "Supplied element is not doubly irreducible.")
+
+    (loop [di-affinity #{e}]
+      (let [new-di-affinity (intersection (reduce union (for [x di-affinity] (union (poset-upper-neighbours lat x) 
+                                                                                    (poset-lower-neighbours lat x)
+                                                                                    #{x})))
+                                          di-elements)]
+
+        (if (= di-affinity new-di-affinity)
+          di-affinity
+          (recur new-di-affinity)))))
+)
+
+(defn DI-chain-affinity [lat e]
+  (count (DI-chain lat e))
+)
+
+(defn DI-chain-aversion [lat e]
+  (/ 1 (count (DI-chain lat e)))
+)
+
 
 ;tentative
 (defn covering-relation [lat]
