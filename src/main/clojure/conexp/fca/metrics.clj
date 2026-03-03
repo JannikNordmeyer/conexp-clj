@@ -31,8 +31,10 @@
                            bitwise-attribute-derivation concepts]]
              [implications :refer :all]
              [lattices :refer :all]
-             [distributivity :refer [birkhoff-downset-completion]]
+
+             [distributivity :refer [birkhoff-downset-completion birkhoff-upset-completion]]
              [posets :refer [order-ideal order-filter poset-upper-neighbours poset-lower-neighbours]]]
+
             [conexp.math.util :refer [eval-polynomial binomial-coefficient]])
   (:import [conexp.fca.lattices Lattice]
            [java.util ArrayList BitSet]))
@@ -365,7 +367,7 @@
 
 (defn modular-triples
   "Given lattice lat, compute triples (x,y,z)∈L³ (pairwire different)
-  such that they fullfil the modular property x ≤ z ⇒
+  such that they fail the modular property x ≤ z ⇒
   x∨(y∧z)=(x∨y)∧z."
   ([lat]
    (modular-triples lat (fn [x] true)))
@@ -382,6 +384,7 @@
                                 true))
                                 prefilter)))) ;; else always true 
 
+
 (defn distributivity-degree
   "Computes the number of triples (a,b,c)∈L³ (pairwise different)
   that fullfil the distributivity law and divides it by the number of
@@ -390,8 +393,9 @@
   (let [n (count (lattice-base-set lat))]
     (if (< n 3)
       1 ;; in case we have less than 3 elements we have distributivity
-    (/ (count (distributive-triples lat))
-       (* 6 (binomial-coefficient n 3))))))
+    (- 1
+       (/ (count (distributive-triples lat))
+          (* 6 (binomial-coefficient n 3)))))))
 
 (defn modularity-degree
   "Computes the number of triples (a,b,c)∈L³ (pairwise different)
@@ -401,8 +405,10 @@
   (let [n (count (lattice-base-set lat))]
     (if (< n 3)
       1 ;; in case we have less than 3 elements we have modularity
-    (/ (count (modular-triples lat))
-       (* 6 (binomial-coefficient n 3)))))) 
+    (- 1 
+       (/ (count (modular-triples lat))
+          (* 6 (binomial-coefficient n 3)))))))
+
 
 (defn elements-distributivity
   "Computes the number of triples (a,b,c)∈L³ (pw different) where either
@@ -412,16 +418,18 @@
   (assert (contains? (lattice-base-set lat) e))
   (let [n (count (lattice-base-set lat)),
         filterfunc (fn [[x y z]] (or (= x e) (= y e) (= z e)))]
-    (/ (count (distributive-triples
+    (- 1 
+       (/ (count (distributive-triples
                lat filterfunc))
-       (* 6 (binomial-coefficient (- n 1) 2)))))
+          (* 6 (binomial-coefficient (- n 1) 2))))))
 
 (defn elements-modularity
   [lat e]
   (assert (contains? (lattice-base-set lat) e))
   (let [n (count (lattice-base-set lat))]
-    (/ (count (modular-triples lat (fn [[x y z]] (or (= x e) (= y e) (= z e)))))
-       (* 6 (binomial-coefficient (- n 1) 2)))))
+    (- 1 
+       (/ (count (modular-triples lat (fn [[x y z]] (or (= x e) (= y e) (= z e)))))
+          (* 6 (binomial-coefficient (- n 1) 2))))))
 
 
 ;redundant with distributivity degree
@@ -924,6 +932,16 @@
   "Quantifies the deviation of the context's concept lattice from a distributive lattice,
    by comparing the size of the concept lattice to its Birkhoff Completion."
   (let [birkhoff-completion-lattice (concept-lattice (birkhoff-downset-completion ctx))]
+    (/ (- (count (lattice-base-set birkhoff-completion-lattice))
+          (count (lattice-base-set (concept-lattice ctx))))
+       (count (lattice-base-set birkhoff-completion-lattice))))
+)
+
+;NEW:
+(defn upset-birkhoff-distributivity-index [ctx]
+  "Quantifies the deviation of the context's concept lattice from a distributive lattice,
+   by comparing the size of the concept lattice to its Upset Birkhoff Completion."
+  (let [birkhoff-completion-lattice (concept-lattice (birkhoff-upset-completion ctx))]
     (/ (- (count (lattice-base-set birkhoff-completion-lattice))
           (count (lattice-base-set (concept-lattice ctx))))
        (count (lattice-base-set birkhoff-completion-lattice))))
