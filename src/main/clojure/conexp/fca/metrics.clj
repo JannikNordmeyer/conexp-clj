@@ -35,7 +35,8 @@
              [distributivity :refer [birkhoff-downset-completion birkhoff-upset-completion]]
              [posets :refer [order-ideal order-filter poset-upper-neighbours poset-lower-neighbours]]]
 
-            [conexp.math.util :refer [eval-polynomial binomial-coefficient]])
+            [conexp.math.util :refer [eval-polynomial binomial-coefficient]]
+            [conexp.io.contexts :refer [read-context]])
   (:import [conexp.fca.lattices Lattice]
            [java.util ArrayList BitSet]))
 
@@ -351,6 +352,89 @@
     (filter condition (filter prefilter (permuted-combinations base 3))))))
 
 
+(defn incompatible-triples [lat]
+  "Given lattice lat, compute triples (x,y,z)∈L³ (pairwise different)
+  such that they do not fullfil the distributive property
+  x∨(y∧z)=(x∨y)∧(x∨z)."
+  (let [base-set (lattice-base-set lat)
+        inf (inf lat)
+        sup (sup lat)]
+    (filter (fn [[x y z]] (not (= (sup x (inf y z ))
+                                  (inf (sup x y) (sup x z)))))
+            (for [x base-set y base-set z base-set] [x y z])))
+)
+
+(defn incompatible-triples2 [lat]
+  "Given lattice lat, compute triples (x,y,z)∈L³ (pairwise different)
+  such that they do not fullfil the distributive property
+  x∨(y∧z)=(x∨y)∧(x∨z)."
+  (let [base-set (lattice-base-set lat)
+        inf (inf lat)
+        sup (sup lat)]
+    (filter (fn [[x y z]] (not (= (inf x (sup y z ))
+                                  (sup (inf x y) (inf x z)))))
+            (for [x base-set y base-set z base-set] [x y z])))
+)
+
+(defn minimal-hitting-set [triples]
+  (let [triples (map set triples)
+        best (atom nil)]
+
+    (letfn [(covered? [chosen triple]
+              (some chosen triple))
+
+            (all-covered? [chosen]
+              (every? #(covered? chosen %) triples))
+
+            (search [chosen remaining]
+              (when (or (nil? @best)
+                        (< (count chosen) (count @best)))
+
+                (if (all-covered? chosen)
+                  (reset! best chosen)
+
+                  (when-let [t (first (filter #(not (covered? chosen %)) triples))]
+                    (doseq [e t]
+                      (search (conj chosen e) (disj remaining e)))))))]
+
+      (search #{} (set (mapcat identity triples)))
+      @best))
+)
+
+(defn greedy-hitting-set [triples]
+  (loop [remaining (map set triples)
+         solution  #{}]
+
+    (if (empty? remaining)
+      solution
+
+      (let [freqs (frequencies (mapcat identity remaining))
+            best  (key (apply max-key val freqs))
+            remaining' (remove #(contains? % best) remaining)]
+
+        (recur remaining' (conj solution best))))))
+
+
+(defn compatible-sublattice [lat]
+  (let [incompatibility-relation (incompatible-triples lat)
+        hitting-set (minimal-hitting-set incompatibility-relation)]
+  (println (count incompatibility-relation))
+  (println (count hitting-set))
+  (make-lattice (difference (lattice-base-set lat) hitting-set) (lattice-order lat)))
+
+)
+
+
+(defn test-sublattices [strs]
+  (doseq [ctxstr strs]
+    (println ctxstr)
+    (let [sublattice (compatible-sublattice (concept-lattice (read-context (str "testing-data/" ctxstr))))]
+      (println (distributive? sublattice))
+      (println "---------------")))
+
+)
+
+
 (defn distributive-triples
   "Given lattice lat, compute triples (x,y,z)∈L³ (pairwise different)
   such that they fullfil the distributive property
@@ -412,7 +496,7 @@
 
 (defn elements-distributivity
   "Computes the number of triples (a,b,c)∈L³ (pw different) where either
-  a=e, b=e, or c=e, that fullfil the modularity law. This number is
+  a=e, b=e, or c=e, that fullfil the distributivity law. This number is
   then divided it by the number of possible pw different triples of such kind." 
   [lat e]
   (assert (contains? (lattice-base-set lat) e))
