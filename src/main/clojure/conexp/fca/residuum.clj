@@ -42,67 +42,59 @@
 
 
 
+(defn d1 [x y z lat] 
+  "Verifies the identity x∨(y∧z)=(x∨y)∧(x∨z) on a triple of lattice elements."
+    (let [inf (inf lat)
+          sup (sup lat)]
+      (= (sup x (inf y z ))
+         (inf (sup x y) (sup x z))))
+)
 
-(defn incompatible-triples [lat]
-  "Given lattice lat, compute triples (x,y,z)∈L³ (pairwise different)
-  such that they do not fullfil the distributive property
-  x∨(y∧z)=(x∨y)∧(x∨z)."
-  (let [base-set (lattice-base-set lat)
-        inf (inf lat)
-        sup (sup lat)]
-    (filter (fn [[x y z]] (not (= (sup x (inf y z ))
-                                  (inf (sup x y) (sup x z)))))
+(defn d2 [x y z lat] 
+  "Verifies the identity x∧(y∨z)=(x∧y)∨(x∧z) on a triple of lattice elements."
+    (let [inf (inf lat)
+          sup (sup lat)]
+      (= (inf x (sup y z ))
+         (sup (inf x y) (inf x z))))
+)
+
+(defn d3 [x y z lat] 
+  "Verifies the identity (a ∨ b) ∧ (b ∨ c) ∧ (a ∨ c) = (a ∧ b) ∨ (b ∧ c) ∨ (a ∧ c) 
+   on a tripe of lattice elements."
+    (let [inf (inf lat)
+          sup (sup lat)]
+      (= (sup (sup (inf x y) (inf x z)) (inf y z))
+                                  (inf (inf (sup x y) (sup x z)) (sup y z))))
+)
+
+
+(defn incompatible-triples [lat f]
+  "Returns a Set of all triples (not respecting order) that do not satisfy the identity *f*."
+    (let [base-set (lattice-base-set lat)]
+    (filter (fn [[x y z]] (not (f x y z lat)))
             (combinations base-set 3)))
 )
 
-(defn incompatible-triples2 [lat]
-  "Given lattice lat, compute triples (x,y,z)∈L³ (pairwise different)
-  such that they do not fullfil the distributive property
-  x∨(y∧z)=(x∨y)∧(x∨z)."
-  (let [base-set (lattice-base-set lat)
-        inf (inf lat)
-        sup (sup lat)]
-    (filter (fn [[x y z]] (not (= (inf x (sup y z ))
-                                  (sup (inf x y) (inf x z)))))
-            (for [x base-set y base-set z base-set] [x y z])))
+
+(defn hitting-set? [candidate relation]
+  "Verifies whether the set *candidate* is a hitting set of the supplied relation.
+   The relation must be supplies as a collection of sets on the universe as *candidate*."
+  (every? #(not (empty? (intersection (set candidate) %))) relation)
 )
 
-(defn incompatible-triples3 [lat]
-  "Given lattice lat, compute triples (x,y,z)∈L³ (pairwise different)
-  such that they do not fullfil the distributive property
-  x∨(y∧z)=(x∨y)∧(x∨z)."
-  (let [base-set (lattice-base-set lat)
-        inf (inf lat)
-        sup (sup lat)]
-    (filter (fn [[x y z]] (not (= (sup (sup (inf x y) (inf x z)) (inf y z))
-                                  (inf (inf (sup x y) (sup x z)) (sup y z)))))
-            (for [x base-set y base-set z base-set] [x y z])))
+
+(defn minimal-hitting-sets [relation]
+  "Returns a collection of all cardinality-minimal hitting sets of the supplied relation.
+  The relation must be supplied as a collection of sets."
+  (let [universe (vec (reduce union relation))]
+    (loop [n 1]
+      (let [candidates (combinations universe n)
+            hitting-sets (filter #(hitting-set? % relation) candidates)]
+        (if (not (empty? hitting-sets))
+          hitting-sets
+          (recur (+ n 1))))))
 )
 
-(defn minimal-hitting-set [triples]
-  (let [triples (map set triples)
-        best (atom nil)]
-
-    (letfn [(covered? [chosen triple]
-              (some chosen triple))
-
-            (all-covered? [chosen]
-              (every? #(covered? chosen %) triples))
-
-            (search [chosen remaining]
-              (when (or (nil? @best)
-                        (< (count chosen) (count @best)))
-
-                (if (all-covered? chosen)
-                  (reset! best chosen)
-
-                  (when-let [t (first (filter #(not (covered? chosen %)) triples))]
-                    (doseq [e t]
-                      (search (conj chosen e) (disj remaining e)))))))]
-
-      (search #{} (set (mapcat identity triples)))
-      @best))
-)
 
 (defn greedy-hitting-set [triples]
   (loop [remaining (map set triples)
@@ -115,28 +107,16 @@
             best  (key (apply max-key val freqs))
             remaining' (remove #(contains? % best) remaining)]
 
-        (recur remaining' (conj solution best))))))
-
-
-(defn greedy-residuum [lat incompatibility-function]
-  (let [incompatibility-relation (incompatibility-function lat)
-        hitting-set (greedy-hitting-set incompatibility-relation)]
-  (println (count incompatibility-relation))
-  (println (count hitting-set))
-  (make-lattice (difference (lattice-base-set lat) hitting-set) (lattice-order lat)))
-
+        (recur remaining' (conj solution best)))))
 )
 
-(defn distributive-residuum [lat incompatibility-function]
-  (let [incompatibility-relation (incompatibility-function lat)
-        hitting-set (minimal-hitting-set incompatibility-relation)]
-  (println (count incompatibility-relation))
-  (println (count hitting-set))
-  (make-lattice (difference (lattice-base-set lat) hitting-set) (lattice-order lat)))
 
-)
+
+
+
 
 (defn sublattice? [lat1 lat2]
+  "Verifies whether *lat1* is a sublattice of *lat2*."
   (let [base-set1 (lattice-base-set lat1)
         inf1 (inf lat1)
         sup1 (sup lat1)
@@ -187,55 +167,4 @@
      :relation new-relation
      :mapping mapping}))
 
-(def lat (make-lattice #{"Top" "Bot" "a" "b" "c" "d" "e" "f" "g" "h" "i" "j"}
-                       #{["Top" "Top"]
-                         ["g" "Top"] ["g" "g"]
-                         ["h" "Top"] ["h" "h"]
-                         ["i" "Top"] ["i" "i"]
-                         ["j" "Top"] ["j" "j"]
-                         ["a" "Top"] ["a" "g"] ["a" "h"] ["a" "a"]
-                         ["b" "Top"] ["b" "g"] ["b" "i"] ["b" "b"]
-                         ["c" "Top"] ["c" "g"] ["c" "j"] ["c" "c"]
-                         ["d" "Top"] ["d" "h"] ["d" "i"] ["d" "d"]
-                         ["e" "Top"] ["e" "h"] ["e" "j"] ["e" "e"]
-                         ["f" "Top"] ["f" "i"] ["f" "j"] ["f" "f"]
-                         ["Bot" "Top"] ["Bot" "g"] ["Bot" "h"] ["Bot" "i"] ["Bot" "j"] ["Bot" "a"] 
-                         ["Bot" "b"] ["Bot" "c"] ["Bot" "d"] ["Bot" "e"] ["Bot" "f"] ["Bot" "Bot"]}))
 
-(def lat2 (make-lattice #{"Top" "Bot" "u" "v" "x" "y" "a" "b" "c"}
-                        #{["Top" "Top"]
-                          ["u" "Top"] ["u" "u"]
-                          ["v" "Top"] ["v" "u"] ["v" "x"] ["v" "a"] ["v" "v"]
-                          ["x" "Top"] ["x" "x"]
-                          ["y" "Top"] ["y" "u"] ["y" "x"] ["y" "a"] ["y" "b"] ["y" "c"] ["y" "y"]
-                          ["a" "Top"] ["a" "u"] ["a" "x"] ["a" "a"]
-                          ["b" "Top"] ["b" "x"] ["b" "b"]
-                          ["c" "Top"] ["c" "x"] ["c" "c"]
-                          ["Bot" "Top"] ["Bot" "u"] ["Bot" "x"] ["Bot" "a"] ["Bot" "b"] ["Bot" "c"] ["Bot" "v"] ["Bot" "y"] ["Bot" "Bot"]}))
-
-(def testlat (make-lattice #{"Top" "Bot" "a" "b" "c" "x"} #{["Top" "Top"] ["a" "Top"] ["a" "a"] ["b" "Top"] ["b" "b"] ["c" "Top"] ["c" "c"] ["x" "Top"] ["x" "b"] ["x" "c"] ["x" "x"] ["Bot" "Top"] ["Bot" "a"] ["Bot" "b"] ["Bot" "c"] ["Bot" "x"] ["Bot" "Bot"] }))
-
-
-(defn test-sublattices [strs incompatiblilty-function]
-  (doseq [ctxstr strs]
-    (println ctxstr)
-    (let [lat (concept-lattice (read-context (str "testing-data/" ctxstr)))
-          sublattice (distributive-residuum lat incompatiblilty-function)]
-      (println (distributive? sublattice))
-      (println (sublattice? sublattice lat))
-      (println "---------------")))
-
-)
-
-(defn testresiduum [n]
-  (doseq [i (range n)]
-    (let [ctx (random-context #{1 2 3 4 5 6 7 8 9 10 11 12} 0.3)
-          lat (concept-lattice ctx)
-          residuum (distributive-residuum lat incompatible-triples)]
-      (println (sublattice? residuum lat))))
-)
-
-;(def l (anonymize-lattice (concept-lattice (random-context #{1 2 3 4 5 6 7 8 9 10 11 12} 0.3))))
-;(def residuum (greedy-residuum l incompatible-triples))
-;(sublattice? residuum l)
-;(distributive residuum)

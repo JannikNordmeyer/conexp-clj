@@ -27,7 +27,8 @@
     [protoconcepts :refer :all]
     [random-contexts :refer :all]
     [simplicial-complexes :refer :all]
-    [triadic-exploration :refer :all]]
+    [triadic-exploration :refer :all]
+    [residuum :refer :all]]
    [conexp.math
     [algebra :refer :all]
     [markov :refer :all]
