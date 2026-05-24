@@ -96,19 +96,54 @@
 )
 
 
-(defn greedy-hitting-set [triples]
-  (loop [remaining (map set triples)
-         solution  #{}]
-
-    (if (empty? remaining)
-      solution
-
-      (let [freqs (frequencies (mapcat identity remaining))
-            best  (key (apply max-key val freqs))
-            remaining' (remove #(contains? % best) remaining)]
-
-        (recur remaining' (conj solution best)))))
+(defn max-covering-elements [relation]
+  "Accepts a relation as a collection of sets and returns a set of elements from the same universe
+   that appear in a maximal amount of entries in the relation."
+  (let [universe (reduce union relation)]
+    (loop [remaining universe
+           maximal #{}
+           max-intersection-count 0]
+      (let [current (first remaining)
+            current-intersection-count (count (filter #(contains? % current) relation))]
+        (if (not current)
+          maximal   
+          (if (< max-intersection-count current-intersection-count)
+            (recur (rest remaining)
+                   #{current}
+                   current-intersection-count)
+            (if (= max-intersection-count current-intersection-count)
+              (recur (rest remaining)
+                     (conj maximal current)
+                     max-intersection-count)
+              (recur (rest remaining)
+                     maximal
+                     max-intersection-count)))))))
 )
+
+(defn remove-covered [elements relation]
+  "Accepts a relation as a set of sets and removes all relation entries that have an intersection with
+   the set *elements*."
+  (filter #(empty? (intersection % elements)) relation)
+)
+
+
+(defn greedy-hitting-sets [relation]
+  (loop [hitting-sets #{}
+         current-sets #{#{}}
+         counter 0]
+    (let [new-sets (for [current-set current-sets 
+                         new-element (max-covering-elements (remove-covered current-set relation))] 
+                     (conj current-set new-element))
+          new-hitting-sets (set (filter #(hitting-set? % relation) new-sets))]
+      (if (empty? new-sets)
+        (union hitting-sets new-hitting-sets)
+        (recur (union hitting-sets new-hitting-sets)
+               new-sets
+               (+ counter 1)))))
+)
+
+
+
 
 
 
