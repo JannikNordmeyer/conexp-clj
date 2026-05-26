@@ -129,8 +129,7 @@
 
 (defn greedy-hitting-sets [relation]
   (loop [hitting-sets #{}
-         current-sets #{#{}}
-         counter 0]
+         current-sets #{#{}}]
     (let [new-sets (for [current-set current-sets 
                          new-element (max-covering-elements (remove-covered current-set relation))] 
                      (conj current-set new-element))
@@ -138,8 +137,7 @@
       (if (empty? new-sets)
         (union hitting-sets new-hitting-sets)
         (recur (union hitting-sets new-hitting-sets)
-               new-sets
-               (+ counter 1)))))
+               new-sets))))
 )
 
 
