@@ -135,9 +135,9 @@
                      (conj current-set new-element))
           new-hitting-sets (set (filter #(hitting-set? % relation) new-sets))]
       (if (empty? new-sets)
-        (union hitting-sets new-hitting-sets)
+        hitting-sets
         (recur (union hitting-sets new-hitting-sets)
-               new-sets))))
+               (difference (set new-sets) new-hitting-sets)))))
 )
 
 
