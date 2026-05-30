@@ -28,3 +28,4 @@
 /.lsp/
 /.direnv/
 /.clj-kondo/
+/testing-data/non-isomorphic-lattices

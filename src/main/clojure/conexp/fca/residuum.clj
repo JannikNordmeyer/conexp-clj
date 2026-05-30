@@ -35,7 +35,8 @@
              [posets :refer [order-ideal order-filter poset-upper-neighbours poset-lower-neighbours]]]
 
             [conexp.math.util :refer [eval-polynomial binomial-coefficient]]
-            [conexp.io.contexts :refer [read-context]])
+            [conexp.io.contexts :refer [read-context]]
+            [clojure.java.io :as io])
   (:import [conexp.fca.lattices Lattice]
            [java.util ArrayList BitSet]))
 
@@ -142,8 +143,54 @@
 
 
 
+(defn read-non-isomorphic-lattices [address]
+  (with-open [rdr (io/reader address)]
+    (doall
+      (for [line (line-seq rdr)]
+        (covering-relation-from-string line)))))
+
+(defn covering-relation-from-string [s]
+  (loop [remaining (vec s)
+         tuples #{}
+         chunk-size 1]
+    (if (empty? remaining)
+      tuples
+      (let [chunk (take chunk-size remaining)
+            new-tuples (set (for [i (range chunk-size) 
+                                  :when (= (nth chunk i) \1)] 
+                              [i chunk-size]))]
+        (recur (subvec remaining chunk-size)
+               (union tuples new-tuples)
+               (+ chunk-size 1)))))
+)
 
 
+
+;(read-non-isomorphic-lattices "testing-data/non-isomorphic-lattices/unlabelled-05.cats")
+
+
+(defn transitive-closure [relation]
+  (loop [r (set relation)]
+    (let [new-pairs
+          (set
+           (for [[a b] r
+                 [c d] r
+                 :when (= b c)]
+             [a d]))
+          r' (into r new-pairs)]
+      (if (= r r')
+        r
+        (recur r'))))
+)
+
+(defn add-reflexive [relation]
+  (let [universe (reduce union relation)]
+    (union relation (for [e universe] [e e])))
+)
+
+(defn lattice-from-covering-relation [relation]
+  (make-lattice (reduce union relation) #(.contains (transitive-closure (add-reflexive relation)) [%1 %2]))
+)
 
 
 
