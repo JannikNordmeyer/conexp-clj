@@ -12,6 +12,7 @@
             [clojure.set :refer [difference union intersection subset?]]
             [conexp.base :refer :all]
             [conexp.math.markov :refer :all]
+            [conexp.math.algebra :refer :all]
             [conexp.fca
              [contexts :refer [make-context incidence dual-context
                                attribute-derivation
@@ -30,7 +31,7 @@
                            bitwise-attribute-derivation concepts]]
              [implications :refer :all]
              [lattices :refer :all]
-
+             [posets :refer :all]
              [distributivity :refer [birkhoff-downset-completion birkhoff-upset-completion]]
              [posets :refer [order-ideal order-filter poset-upper-neighbours poset-lower-neighbours]]]
 
@@ -38,16 +39,26 @@
             [conexp.io.contexts :refer [read-context]]
             [clojure.java.io :as io])
   (:import [conexp.fca.lattices Lattice]
+           [conexp.fca.posets Poset]
            [java.util ArrayList BitSet]))
 
 
-
+(defn sublattice? [lat1 lat2]
+  "Verifies whether *lat1* is a sublattice of *lat2*."
+  (let [base-set1 (lattice-base-set lat1)
+        inf1 (inf lat1)
+        sup1 (sup lat1)
+        inf2 (inf lat2)
+        sup2 (sup lat2)]
+    (every? identity (for [x base-set1 y base-set1] (and (= (sup1 x y) (sup2 x y))
+                                                         (= (inf1 x y) (inf2 x y))))))
+)
 
 (defn d1 [x y z lat] 
   "Verifies the identity x∨(y∧z)=(x∨y)∧(x∨z) on a triple of lattice elements."
     (let [inf (inf lat)
           sup (sup lat)]
-      (= (sup x (inf y z ))
+      (= (sup x (inf y z))
          (inf (sup x y) (sup x z))))
 )
 
@@ -72,28 +83,36 @@
 (defn incompatible-triples [lat f]
   "Returns a Set of all triples (not respecting order) that do not satisfy the identity *f*."
     (let [base-set (lattice-base-set lat)]
-    (filter (fn [[x y z]] (not (f x y z lat)))
-            (combinations base-set 3)))
+    (map set (filter (fn [[x y z]] (not (f x y z lat)))
+                     (combinations base-set 3))))
+)
+
+(defn respectant? [lat f]
+  "Verifies if the predicate *f* is true on all triples of the supplied lattice."
+  (= (count (incompatible-triples lat f)) 0)
 )
 
 
 (defn hitting-set? [candidate relation]
   "Verifies whether the set *candidate* is a hitting set of the supplied relation.
    The relation must be supplies as a collection of sets on the universe as *candidate*."
-  (every? #(not (empty? (intersection (set candidate) %))) relation)
+  (every? #(not (empty? (intersection (set candidate) %))) 
+          relation)
 )
 
 
 (defn minimal-hitting-sets [relation]
   "Returns a collection of all cardinality-minimal hitting sets of the supplied relation.
   The relation must be supplied as a collection of sets."
-  (let [universe (vec (reduce union relation))]
-    (loop [n 1]
-      (let [candidates (combinations universe n)
-            hitting-sets (filter #(hitting-set? % relation) candidates)]
-        (if (not (empty? hitting-sets))
-          hitting-sets
-          (recur (+ n 1))))))
+  (if (empty? relation)
+    #{}
+    (let [universe (vec (reduce union relation))]
+      (loop [n 1]
+        (let [candidates (combinations universe n)
+              hitting-sets (filter #(hitting-set? % relation) candidates)]
+          (if (not (empty? hitting-sets))
+            hitting-sets
+            (recur (+ n 1)))))))
 )
 
 
@@ -144,6 +163,44 @@
 )
 
 
+(defn residuum [f lat]
+  (let [incompatibility-relation (set (incompatible-triples lat f))
+        hitting-sets (minimal-hitting-sets incompatibility-relation)
+        posets (for [h hitting-sets] (make-poset (difference (lattice-base-set lat) h) 
+                                                 (lattice-order lat)))]
+    (for [p posets] (if (has-lattice-order? p) (make-lattice (base-set p) (order p))
+                                              p)))
+)
+
+(defn greedy-residuum [f lat]
+  (let [incompatibility-relation (set (incompatible-triples lat f))
+        hitting-sets (greedy-hitting-sets incompatibility-relation)
+        posets (for [h hitting-sets] (make-poset (difference (lattice-base-set lat) h) 
+                                                 (lattice-order lat)))]
+    (for [p posets] (if (has-lattice-order? p) (make-lattice (base-set p) (order p))
+                                              p)))
+)
+
+(defn syndrome [f lat]
+  (let [posets (residuum f lat)]
+  [(count posets)
+   (count (filter has-lattice-order? posets))
+   (count (filter #(sublattice? % lat) posets))
+   (count (filter #(respectant? % f) posets))
+   (count (filter #(and (sublattice? % lat) (respectant? % f)) posets))])
+)
+
+(defn greedy-syndrome [f lat]
+  (let [posets (greedy-residuum f lat)]
+  [(count posets)
+   (count (filter has-lattice-order? posets))
+   (count (filter #(sublattice? % lat) posets))
+   (count (filter #(respectant? % f) posets))
+   (count (filter #(and (sublattice? % lat) (respectant? % f)) posets))])
+)
+
+
+
 (defn covering-relation-from-string [s]
   "Accepts a string representation of a covering relation in the Gebhardt format
    used in the non-isomorphic lattices dataset and returns a set of the covering relation."
@@ -160,19 +217,6 @@
                (union tuples new-tuples)
                (+ chunk-size 1)))))
 )
-
-
-(defn read-non-isomorphic-lattices [address]
-  "Reads a file from the non-isomorphic lattices dataset and returns the covering 
-   relation of all lattices contained within."
-  (with-open [rdr (io/reader address)]
-    (doall
-      (for [line (line-seq rdr)]
-        (covering-relation-from-string line)))))
-
-
-
-;(read-non-isomorphic-lattices "testing-data/non-isomorphic-lattices/unlabelled-05.cats")
 
 
 (defn- transitive-closure [relation]
@@ -204,25 +248,33 @@
 )
 
 
-
-
-
-
-
-
-
-
-
-(defn sublattice? [lat1 lat2]
-  "Verifies whether *lat1* is a sublattice of *lat2*."
-  (let [base-set1 (lattice-base-set lat1)
-        inf1 (inf lat1)
-        sup1 (sup lat1)
-        inf2 (inf lat2)
-        sup2 (sup lat2)]
-    (every? identity (for [x base-set1 y base-set1] (and (= (sup1 x y) (sup2 x y))
-                                                         (= (inf1 x y) (inf2 x y))))))
+(defn read-non-isomorphic-lattices [address]
+  "Reads a file from the non-isomorphic lattices dataset and returns the covering 
+   relation of all lattices contained within."
+  (with-open [rdr (io/reader address)]
+    (doall
+      (for [line (line-seq rdr)]
+        (lattice-from-covering-relation (covering-relation-from-string line)))))
 )
+
+
+
+;(read-non-isomorphic-lattices "testing-data/non-isomorphic-lattices/unlabelled-05.cats")
+
+
+
+(defn evaluate-non-isomorphic-lattices [f address]
+  (with-open [rdr (io/reader address)]
+      (doseq [line (line-seq rdr)]
+        (println (syndrome f (lattice-from-covering-relation (covering-relation-from-string line))))))
+)
+
+(defn greedy-evaluate-non-isomorphic-lattices [f address]
+  (with-open [rdr (io/reader address)]
+      (doseq [line (line-seq rdr)]
+        (println (greedy-syndrome f (lattice-from-covering-relation (covering-relation-from-string line))))))
+)
+
 
 (defn explicit-sublattice? [lat1 lat2]
   (let [base-set1 (lattice-base-set lat1)
