@@ -55,7 +55,8 @@
 )
 
 (defn d1 [x y z lat] 
-  "Verifies the identity x∨(y∧z)=(x∨y)∧(x∨z) on a triple of lattice elements."
+  "Verifies the identity x∨(y∧z)=(x∨y)∧(x∨z) on a triple of lattice elements.
+  This predicate is not commutative."
     (let [inf (inf lat)
           sup (sup lat)]
       (= (sup x (inf y z))
@@ -63,7 +64,8 @@
 )
 
 (defn d2 [x y z lat] 
-  "Verifies the identity x∧(y∨z)=(x∧y)∨(x∧z) on a triple of lattice elements."
+  "Verifies the identity x∧(y∨z)=(x∧y)∨(x∧z) on a triple of lattice elements.
+   This predicate is not commutative."
     (let [inf (inf lat)
           sup (sup lat)]
       (= (inf x (sup y z ))
@@ -72,7 +74,7 @@
 
 (defn d3 [x y z lat] 
   "Verifies the identity (a ∨ b) ∧ (b ∨ c) ∧ (a ∨ c) = (a ∧ b) ∨ (b ∧ c) ∨ (a ∧ c) 
-   on a tripe of lattice elements."
+   on a tripe of lattice elements. This predicate is commutative."
     (let [inf (inf lat)
           sup (sup lat)]
       (= (sup (sup (inf x y) (inf x z)) (inf y z))
@@ -80,11 +82,15 @@
 )
 
 
-(defn incompatible-triples [lat f]
-  "Returns a Set of all triples (not respecting order) that do not satisfy the identity *f*."
-    (let [base-set (lattice-base-set lat)]
-    (map set (filter (fn [[x y z]] (not (f x y z lat)))
-                     (combinations base-set 3))))
+(defn incompatible-triples
+  "Returns a Set of all triples (not respecting order) that do not satisfy the identity *f*.
+  If the predicate *f* is commutative, the triples will be more efficiently represented as sets."
+  ([lat f] (incompatible-triples lat f false))
+  ([lat f commutative]
+    (let [base-set (lattice-base-set lat)
+          triples (if commutative (combinations base-set 3) (permuted-combinations base-set 3))]
+      (map set (filter (fn [[x y z]] (not (f x y z lat)))
+                       triples))))
 )
 
 (defn respectant? [lat f]
@@ -163,40 +169,48 @@
 )
 
 
-(defn residuum [f lat]
-  (let [incompatibility-relation (set (incompatible-triples lat f))
+(defn residuum [f lat commutative]
+  (let [incompatibility-relation (set (incompatible-triples lat f commutative))
         hitting-sets (minimal-hitting-sets incompatibility-relation)
-        posets (for [h hitting-sets] (make-poset (difference (lattice-base-set lat) h) 
-                                                 (lattice-order lat)))]
-    (for [p posets] (if (has-lattice-order? p) (make-lattice (base-set p) (order p))
+        posets (for [h hitting-sets] (make-poset-nc (difference (lattice-base-set lat) h) 
+                                                    (lattice-order lat)))]
+    (for [p posets] (if (has-lattice-order? p) (make-lattice-nc (base-set p) (order p))
                                               p)))
 )
 
-(defn greedy-residuum [f lat]
-  (let [incompatibility-relation (set (incompatible-triples lat f))
+(defn greedy-residuum [f lat commutative]
+  (let [incompatibility-relation (set (incompatible-triples lat f commutative))
         hitting-sets (greedy-hitting-sets incompatibility-relation)
-        posets (for [h hitting-sets] (make-poset (difference (lattice-base-set lat) h) 
-                                                 (lattice-order lat)))]
-    (for [p posets] (if (has-lattice-order? p) (make-lattice (base-set p) (order p))
+        posets (for [h hitting-sets] (make-poset-nc (difference (lattice-base-set lat) h) 
+                                                    (lattice-order lat)))]
+    (for [p posets] (if (has-lattice-order? p) (make-lattice-nc (base-set p) (order p))
                                               p)))
 )
 
-(defn syndrome [f lat]
-  (let [posets (residuum f lat)]
+(defn syndrome [f lat commutative]
+  (let [posets (residuum f lat commutative)
+        lattices (filter has-lattice-order? posets)]
   [(count posets)
-   (count (filter has-lattice-order? posets))
-   (count (filter #(sublattice? % lat) posets))
-   (count (filter #(respectant? % f) posets))
-   (count (filter #(and (sublattice? % lat) (respectant? % f)) posets))])
+   (count lattices)
+   (count (filter #(sublattice? % lat) lattices))
+   (count (filter #(respectant? % f) lattices))
+   (count (filter #(and (sublattice? % lat) (respectant? % f)) lattices))])
 )
 
-(defn greedy-syndrome [f lat]
-  (let [posets (greedy-residuum f lat)]
+(defn greedy-syndrome [f lat commutative]
+  (let [posets (greedy-residuum f lat commutative)
+        lattices (filter has-lattice-order? posets)]
   [(count posets)
-   (count (filter has-lattice-order? posets))
-   (count (filter #(sublattice? % lat) posets))
-   (count (filter #(respectant? % f) posets))
-   (count (filter #(and (sublattice? % lat) (respectant? % f)) posets))])
+   (count lattices)
+   (count (filter #(sublattice? % lat) lattices))
+   (count (filter #(respectant? % f) lattices))
+   (count (filter #(and (sublattice? % lat) (respectant? % f)) lattices))])
+)
+
+
+
+(defn perfect? [syndrome]
+  (apply = syndrome)
 )
 
 
@@ -210,8 +224,8 @@
     (if (empty? remaining)
       tuples
       (let [chunk (take chunk-size remaining)
-            new-tuples (set (for [i (range chunk-size) 
-                                  :when (= (nth chunk i) \1)] 
+              new-tuples (set (for [i (range chunk-size) 
+                                    :when (= (nth chunk i) \1)] 
                               [i chunk-size]))]
         (recur (subvec remaining chunk-size)
                (union tuples new-tuples)
@@ -243,14 +257,13 @@
 
 (defn lattice-from-covering-relation [relation]
   "Accepts a covering relation in set form and returns the lattice represented by the relation."
-  (make-lattice (reduce union relation) 
-                #(.contains (transitive-closure (add-reflexive relation)) [%1 %2]))
+  (make-lattice-nc (reduce union relation) 
+                (transitive-closure (add-reflexive relation)))
 )
 
 
 (defn read-non-isomorphic-lattices [address]
-  "Reads a file from the non-isomorphic lattices dataset and returns the covering 
-   relation of all lattices contained within."
+  "Reads a file from the non-isomorphic lattices dataset and returns all lattices contained within."
   (with-open [rdr (io/reader address)]
     (doall
       (for [line (line-seq rdr)]
@@ -263,17 +276,100 @@
 
 
 
-(defn evaluate-non-isomorphic-lattices [f address]
+(defn evaluate-non-isomorphic-lattices [f commutative address]
   (with-open [rdr (io/reader address)]
       (doseq [line (line-seq rdr)]
-        (println (syndrome f (lattice-from-covering-relation (covering-relation-from-string line))))))
+        (let [syn (syndrome f (lattice-from-covering-relation (covering-relation-from-string line)) commutative)]
+          (println syn
+                   (perfect? syn)
+                   line))))
 )
 
-(defn greedy-evaluate-non-isomorphic-lattices [f address]
+(defn greedy-evaluate-non-isomorphic-lattices [f commutative address]
   (with-open [rdr (io/reader address)]
       (doseq [line (line-seq rdr)]
-        (println (greedy-syndrome f (lattice-from-covering-relation (covering-relation-from-string line))))))
+        (let [syn (greedy-syndrome f (lattice-from-covering-relation (covering-relation-from-string line)) commutative)]
+          (println syn
+                   (perfect? syn)
+                   line))))
 )
+
+
+(defn evaluate [in-address out-address]
+  (with-open [r (io/reader in-address)
+              w (io/writer out-address)]
+    (.write w (str "String-Representation; "
+                   "Size; "
+                   "d1-Syndrome; "
+                   "d1-Syndrome Perfect?; "
+                   "greedy-d1-Syndome; "
+                   "greedy-d1-Syndrome Perfect?; "
+                   "d1-greedy-same?; "
+
+                   "d2-Syndrome; "
+                   "d2-Syndrome Perfect?; "
+                   "greedy-d2-Syndome; "
+                   "greedy-d2-Syndrome Perfect?; "
+                   "d2-greedy-same?; "
+
+                   "d3-Syndrome; "
+                   "d3-Syndrome Perfect?; "
+                   "greedy-d3-Syndome; "
+                   "greedy-d3-Syndrome Perfect?; "
+                   "d3-greedy-same?" 
+                   "\n"))
+    (doseq [line (line-seq r)]
+      (let [lat (lattice-from-covering-relation (covering-relation-from-string line))
+            d1-res (syndrome d1 lat false)
+            d1-res-perfect (perfect? d1-res)
+            d1-res-greedy (greedy-syndrome d1 lat false)
+            d1-res-greedy-perfect (perfect? d1-res-greedy)
+            d1-greedy-same (= d1-res d1-res-greedy)
+
+            d2-res (syndrome d2 lat false)
+            d2-res-perfect (perfect? d2-res)
+            d2-res-greedy (greedy-syndrome d2 lat false)
+            d2-res-greedy-perfect (perfect? d2-res-greedy)
+            d2-greedy-same (= d2-res d2-res-greedy)
+
+            d3-res (syndrome d3 lat true)
+            d3-res-perfect (perfect? d3-res)
+            d3-res-greedy (greedy-syndrome d3 lat true)
+            d3-res-greedy-perfect (perfect? d3-res-greedy)
+            d3-greedy-same (= d3-res d3-res-greedy)]
+        (.write w (str line "; "
+                       (count (lattice-base-set lat)) "; "
+                       d1-res "; "
+                       d1-res-perfect "; "
+                       d1-res-greedy "; "
+                       d1-res-greedy-perfect "; "
+                       d1-greedy-same "; "
+
+                       d2-res "; "
+                       d2-res-perfect "; "
+                       d2-res-greedy "; "
+                       d2-res-greedy-perfect "; "
+                       d2-greedy-same "; "
+                       
+                       d3-res "; "
+                       d3-res-perfect "; "
+                       d3-res-greedy "; "
+                       d3-res-greedy-perfect "; "
+                       d3-greedy-same
+                       "\n")))))
+)
+
+
+(def lat (make-lattice #{1 2 3 4 5 6} #{[1 1]
+                                        [2 1] [2 2]
+                                        [3 1] [3 3]
+                                        [4 1] [4 4]
+                                        [5 1] [5 3] [5 4] [5 5]
+                                        [6 1] [6 2] [6 3] [6 4] [6 5] [6 6]}))
+
+
+
+;(greedy-evaluate-non-isomorphic-lattices d3 "testing-data/non-isomorphic-lattices/unlabelled-09.cats")
 
 
 (defn explicit-sublattice? [lat1 lat2]
