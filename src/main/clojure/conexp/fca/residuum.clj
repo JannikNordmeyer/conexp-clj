@@ -87,10 +87,7 @@
   (distributive? (generated-sublattice lat #{x y z}))
 )
 
-(defn condition-blue [x y z lat]
-  (or (not (d3 x y z lat))
-      (d4 x y z lat))
-)
+
 
 
 (defn incompatible-triples
@@ -103,6 +100,8 @@
       (set (map set (filter (fn [[x y z]] (not (f x y z lat)))
                           triples)))))
 )
+
+
 
 (defn respectant? [lat f]
   "Verifies if the predicate *f* is true on all triples of the supplied lattice."
@@ -369,6 +368,42 @@
                        d3-greedy-same
                        "\n")))))
 )
+
+
+(defn- contradicting-triples [lat premise-predicate conclusion-predicate]
+  "Returns the set of Lattice triples that contradict the supplied implication of triple predicates."
+  (let [base-set (lattice-base-set lat)
+        triples  (permuted-combinations base-set 3)]
+     (set (map set (filter (fn [[x y z]] (and (premise-predicate x y z lat) (not (conclusion-predicate x y z lat))))
+                           triples))))
+)
+
+(defn find-counterexample [premise-predicate conclusion-predicate address]
+  "Searches the file at the supplied adress for a counterexample that contradicts the supplied implication."
+  (with-open [rdr (io/reader address)]
+  (loop []
+    (let [line (.readLine rdr)
+          lat (lattice-from-covering-relation (covering-relation-from-string line))
+          contradictions (contradicting-triples lat premise-predicate conclusion-predicate)]
+       (if line   
+          (if (seq contradictions)
+             [line contradictions]
+             (recur))))))
+)
+
+(defn search-for-counterexamples [premise-predicate conclusion-predicate max-search-size]
+  (loop [size 2]
+    (let [search-results (find-counterexample premise-predicate 
+                                              conclusion-predicate 
+                                              (str "testing-data/non-isomorphic-lattices/unlabelled-0"
+                                                   size
+                                                   ".cats"))]
+      (if (<= size max-search-size) 
+        (if search-results 
+          search-results
+          (recur (+ size 1))))))
+)
+
 
 
 (def lat (make-lattice #{1 2 3 4 5 6} #{[1 1]
