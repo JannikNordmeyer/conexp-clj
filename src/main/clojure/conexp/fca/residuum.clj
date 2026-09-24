@@ -74,11 +74,22 @@
 
 (defn d3 [x y z lat] 
   "Verifies the identity (a ∨ b) ∧ (b ∨ c) ∧ (a ∨ c) = (a ∧ b) ∨ (b ∧ c) ∨ (a ∧ c) 
-   on a tripe of lattice elements. This predicate is commutative."
+   on a triple of lattice elements. This predicate is commutative."
     (let [inf (inf lat)
           sup (sup lat)]
       (= (sup (sup (inf x y) (inf x z)) (inf y z))
                                   (inf (inf (sup x y) (sup x z)) (sup y z))))
+)
+
+(defn d4 [x y z lat]
+  "Verifies whether the supplied elements generate a destributive sublattice. 
+   This predicate is commutative."
+  (distributive? (generated-sublattice lat #{x y z}))
+)
+
+(defn condition-blue [x y z lat]
+  (or (not (d3 x y z lat))
+      (d4 x y z lat))
 )
 
 
@@ -89,8 +100,8 @@
   ([lat f commutative]
     (let [base-set (lattice-base-set lat)
           triples (if commutative (combinations base-set 3) (permuted-combinations base-set 3))]
-      (map set (filter (fn [[x y z]] (not (f x y z lat)))
-                       triples))))
+      (set (map set (filter (fn [[x y z]] (not (f x y z lat)))
+                          triples)))))
 )
 
 (defn respectant? [lat f]
@@ -162,7 +173,7 @@
                          new-element (max-covering-elements (remove-covered current-set relation))] 
                      (conj current-set new-element))
           new-hitting-sets (set (filter #(hitting-set? % relation) new-sets))]
-      (if (empty? new-sets)
+      (if (or (not (empty? hitting-sets)) (empty? new-sets))
         hitting-sets
         (recur (union hitting-sets new-hitting-sets)
                (difference (set new-sets) new-hitting-sets)))))
@@ -367,7 +378,20 @@
                                         [5 1] [5 3] [5 4] [5 5]
                                         [6 1] [6 2] [6 3] [6 4] [6 5] [6 6]}))
 
-
+(def lat2 (make-lattice #{"a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "top" "bot"}
+                        #{["top" "top"]
+                          ["g" "top"] ["g" "g"]
+                          ["h" "top"] ["h" "h"]
+                          ["i" "top"] ["i" "i"]
+                          ["j" "top"] ["j" "j"]
+                          ["d" "top"] ["d" "h"] ["d" "i"] ["d" "d"]
+                          ["a" "top"] ["a" "g"] ["a" "h"] ["a" "a"]
+                          ["b" "top"] ["b" "g"] ["b" "i"] ["b" "b"]
+                          ["c" "top"] ["c" "g"] ["c" "j"] ["c" "c"]
+                          ["e" "top"] ["e" "h"] ["e" "j"] ["e" "e"]
+                          ["f" "top"] ["f" "i"] ["f" "j"] ["f" "f"]
+                          ["bot" "bot"]["bot" "a"]["bot" "b"]["bot" "c"]["bot" "d"]["bot" "e"]["bot" "f"]["bot" "g"]["bot" "h"]["bot" "i"]["bot" "j"]["bot" "top"]}
+                        ))
 
 ;(greedy-evaluate-non-isomorphic-lattices d3 "testing-data/non-isomorphic-lattices/unlabelled-09.cats")
 
@@ -414,3 +438,106 @@
      :mapping mapping}))
 
 
+;(def lat (concept-lattice (read-context "testing-data/triangles.cxt")))
+;lat
+;(count (incompatible-triples lat d1 false))
+
+(def lat (concept-lattice (random-context #{1 2 3 4 5 6 7 8 9 10} 0.5)))
+(greedy-syndrome d3 lat true)
+
+
+(def counterexample (make-lattice #{0 7 1 4 15 13 6 3 12 2 11 9 5 14 16 10 8}
+                                  #{[0 0]
+  [0 7]
+  [0 1]
+  [0 15]
+  [0 11]
+  [0 14]
+  [0 16]
+  [0 8]
+  [7 7]
+  [7 15]
+  [7 11]
+  [7 14]
+  [1 1]
+  [1 11]
+  [1 14]
+  [1 8]
+  [4 0]
+  [4 7]
+  [4 1]
+  [4 4]
+  [4 15]
+  [4 13]
+  [4 6]
+  [4 3]
+  [4 12]
+  [4 2]
+  [4 11]
+  [4 9]
+  [4 5]
+  [4 14]
+  [4 16]
+  [4 10]
+  [4 8]
+  [15 15]
+  [15 14]
+  [13 15]
+  [13 13]
+  [13 6]
+  [13 12]
+  [13 5]
+  [13 14]
+  [13 16]
+  [13 10]
+  [13 8]
+  [6 15]
+  [6 6]
+  [6 12]
+  [6 14]
+  [6 10]
+  [3 7]
+  [3 15]
+  [3 6]
+  [3 3]
+  [3 12]
+  [3 11]
+  [3 9]
+  [3 14]
+  [3 10]
+  [12 12]
+  [12 14]
+  [2 1]
+  [2 12]
+  [2 2]
+  [2 11]
+  [2 9]
+  [2 5]
+  [2 14]
+  [2 8]
+  [11 11]
+  [11 14]
+  [9 12]
+  [9 11]
+  [9 9]
+  [9 14]
+  [5 12]
+  [5 5]
+  [5 14]
+  [5 8]
+  [14 14]
+  [16 15]
+  [16 14]
+  [16 16]
+  [16 8]
+  [10 15]
+  [10 12]
+  [10 14]
+  [10 10]
+  [8 14]
+  [8 8]}))
+
+
+(def ctx (make-context #{} #{"non-residual" "dystonic" "addorsed"} #{}))
+
+(def ctx2 (make-context #{}  #{"d1" "d2" "d3" "d4" "strong d1" "strong d2"} #{}))
