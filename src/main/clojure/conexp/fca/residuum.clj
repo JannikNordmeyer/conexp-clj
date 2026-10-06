@@ -392,6 +392,8 @@
 )
 
 (defn search-for-counterexamples [premise-predicate conclusion-predicate max-search-size]
+  "Searches the non-isomorphic-lattice dataset for a counterexample of the supplied implication of predicates
+   until the supplied maximum size."
   (loop [size 2]
     (let [search-results (find-counterexample premise-predicate 
                                               conclusion-predicate 
@@ -403,6 +405,21 @@
           search-results
           (recur (+ size 1))))))
 )
+
+(defn- conjoin-predicates [predicates]
+  "Accepts a set of prediates and returns the conjuction on them as a function."
+  (fn [& args]
+    (every? #(apply % args) predicates))
+)
+
+(defn counterexample-search-handler [ctx known impl]
+  (let [counterexample (search-for-counterexamples (conjoin-predicates (premise impl)) 
+                                                   (conjoin-predicates (conclusion impl)) 12)]
+    (do (if counterexample (print (str impl " does not hold. Counterexample:\n" counterexample))
+                           (print (str "No counterexample found for implication " impl ". Assumed to be true.")))
+      [counterexample ]))
+)
+
 
 
 
