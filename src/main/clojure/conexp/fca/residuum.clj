@@ -370,12 +370,14 @@
 )
 
 
+;automated counterexample search for triple properties
+
 (defn- contradicting-triples [lat premise-predicate conclusion-predicate]
   "Returns the set of Lattice triples that contradict the supplied implication of triple predicates."
   (let [base-set (lattice-base-set lat)
         triples  (permuted-combinations base-set 3)]
-     (set (map set (filter (fn [[x y z]] (and (premise-predicate x y z lat) (not (conclusion-predicate x y z lat))))
-                           triples))))
+     (set (filter (fn [[x y z]] (and (premise-predicate x y z lat) (not (conclusion-predicate x y z lat))))
+                           triples)))
 )
 
 (defn find-counterexample [premise-predicate conclusion-predicate address]
@@ -397,7 +399,7 @@
   (loop [size 2]
     (let [search-results (find-counterexample premise-predicate 
                                               conclusion-predicate 
-                                              (str "testing-data/non-isomorphic-lattices/unlabelled-0"
+                                              (str "testing-data/non-isomorphic-lattices/unlabelled-"
                                                    size
                                                    ".cats"))]
       (if (<= size max-search-size) 
@@ -406,22 +408,36 @@
           (recur (+ size 1))))))
 )
 
+
+(defn compute-predicates [latstr triple predicates]
+  (let [lat (lattice-from-covering-relation (covering-relation-from-string latstr))
+        [x y z] triple
+        predicate-wrapper (fn [predicate] (predicate x y z lat))]
+    (filter predicate-wrapper predicates))
+)
+
 (defn- conjoin-predicates [predicates]
   "Accepts a set of prediates and returns the conjuction on them as a function."
   (fn [& args]
     (every? #(apply % args) predicates))
 )
 
+
+
 (defn counterexample-search-handler [ctx known impl]
-  (let [counterexample (search-for-counterexamples (conjoin-predicates (premise impl)) 
-                                                   (conjoin-predicates (conclusion impl)) 12)]
-    (do (if counterexample (print (str impl " does not hold. Counterexample:\n" counterexample))
-                           (print (str "No counterexample found for implication " impl ". Assumed to be true.")))
-      [counterexample ]))
+(println ctx)
+  (let [[counterexample-lat counterexample-triples] (search-for-counterexamples (conjoin-predicates (premise impl)) 
+                                                                               (conjoin-predicates (conclusion impl)) 12)]
+    (do (if counterexample-lat (print (str impl " does not hold. Counterexample:\n" [counterexample-lat (first counterexample-triples)] "\n"))
+                               (print (str "No counterexample found for implication " impl ". Assumed to be true.\n")))
+      [[[counterexample-lat (first counterexample-triples)] (compute-predicates counterexample-lat 
+                                                                               (first counterexample-triples)
+                                                                               (attributes ctx))]]))
 )
 
 
-
+;(def pctx (make-context #{} #{d1 d2 d3 d4} #{}))
+;(explore-attributes :context pctx :handler counterexample-search-handler)
 
 (def lat (make-lattice #{1 2 3 4 5 6} #{[1 1]
                                         [2 1] [2 2]
