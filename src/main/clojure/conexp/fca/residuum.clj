@@ -9,7 +9,7 @@
 (ns conexp.fca.residuum
   (:require [clojure.core.reducers :as r]
             [clojure.math.combinatorics :refer [permuted-combinations combinations]]
-            [clojure.set :refer [difference union intersection subset?]]
+            [clojure.set :refer [difference union intersection subset? map-invert]]
             [conexp.base :refer :all]
             [conexp.math.markov :refer :all]
             [conexp.math.algebra :refer :all]
@@ -54,6 +54,64 @@
                                                          (= (inf1 x y) (inf2 x y))))))
 )
 
+
+
+(defn incompatible-triples
+  "Returns a Set of all triples (not respecting order) that do not satisfy the identity *f*.
+  If the predicate *f* is commutative, the triples will be more efficiently represented as sets."
+  ([lat f] (incompatible-triples lat f false))
+  ([lat f commutative]
+    (let [base-set (lattice-base-set lat)
+          triples (if commutative (combinations base-set 3) (permuted-combinations base-set 3))]
+      (set (map set (filter (fn [[x y z]] (not (f x y z lat)))
+                          triples)))))
+)
+
+(defn d1 [x y z lat] 
+  "Verifies the identity x∨(y∧z)=(x∨y)∧(x∨z) on a triple of lattice elements.
+  This predicate is not commutative."
+    (let [inf (inf lat)
+          sup (sup lat)]
+      (= (sup x (inf y z))
+         (inf (sup x y) (sup x z))))
+)
+
+(defn d2 [x y z lat] 
+  "Verifies the identity x∧(y∨z)=(x∧y)∨(x∧z) on a triple of lattice elements.
+   This predicate is not commutative."
+    (let [inf (inf lat)
+          sup (sup lat)]
+      (= (inf x (sup y z ))
+         (sup (inf x y) (inf x z))))
+)
+
+(defn d3 [x y z lat] 
+  "Verifies the identity (a ∨ b) ∧ (b ∨ c) ∧ (a ∨ c) = (a ∧ b) ∨ (b ∧ c) ∨ (a ∧ c) 
+   on a triple of lattice elements. This predicate is commutative."
+    (let [inf (inf lat)
+          sup (sup lat)]
+      (= (sup (sup (inf x y) (inf x z)) (inf y z))
+                                  (inf (inf (sup x y) (sup x z)) (sup y z))))
+)
+
+(defn d4 [x y z lat]
+  "Verifies whether the supplied elements generate a destributive sublattice. 
+   This predicate is commutative."
+  (if (not (= (count (set [x y z])) 3))
+    true
+    (distributive? (generated-sublattice lat #{x y z})))
+)
+
+
+(defn strong-d1 [x y z lat] (and (d1 x y z lat) (d1 y x z lat) (d1 z x y lat)))
+
+(defn strong-d2 [x y z lat] (and (d2 x y z lat) (d2 y x z lat) (d2 z x y lat)))
+
+(defn respectant? [lat f]
+  "Verifies if the predicate *f* is true on all triples of the supplied lattice."
+  (= (count (incompatible-triples lat f)) 0)
+)
+
 (defn d1 [x y z lat] 
   "Verifies the identity x∨(y∧z)=(x∨y)∧(x∨z) on a triple of lattice elements.
   This predicate is not commutative."
@@ -88,26 +146,9 @@
 )
 
 
+(defn strong-d1 [x y z lat] (and (d1 x y z lat) (d1 y x z lat) (d1 z x y lat)))
 
-
-(defn incompatible-triples
-  "Returns a Set of all triples (not respecting order) that do not satisfy the identity *f*.
-  If the predicate *f* is commutative, the triples will be more efficiently represented as sets."
-  ([lat f] (incompatible-triples lat f false))
-  ([lat f commutative]
-    (let [base-set (lattice-base-set lat)
-          triples (if commutative (combinations base-set 3) (permuted-combinations base-set 3))]
-      (set (map set (filter (fn [[x y z]] (not (f x y z lat)))
-                          triples)))))
-)
-
-
-
-(defn respectant? [lat f]
-  "Verifies if the predicate *f* is true on all triples of the supplied lattice."
-  (= (count (incompatible-triples lat f)) 0)
-)
-
+(defn strong-d2 [x y z lat] (and (d2 x y z lat) (d2 y x z lat) (d2 z x y lat)))
 
 (defn hitting-set? [candidate relation]
   "Verifies whether the set *candidate* is a hitting set of the supplied relation.
@@ -397,12 +438,13 @@
   "Searches the non-isomorphic-lattice dataset for a counterexample of the supplied implication of predicates
    until the supplied maximum size."
   (loop [size 2]
+;(println (str "Current Search Size: " size))
     (let [search-results (find-counterexample premise-predicate 
                                               conclusion-predicate 
                                               (str "testing-data/non-isomorphic-lattices/unlabelled-"
                                                    size
                                                    ".cats"))]
-      (if (<= size max-search-size) 
+      (if (< size max-search-size) 
         (if search-results 
           search-results
           (recur (+ size 1))))))
@@ -416,27 +458,34 @@
     (filter predicate-wrapper predicates))
 )
 
-(defn- conjoin-predicates [predicates]
+(defn conjoin-predicates [predicates]
   "Accepts a set of prediates and returns the conjuction on them as a function."
+(println predicates)
   (fn [& args]
     (every? #(apply % args) predicates))
 )
 
 
+(def str-to-predicate {"d-1" d1 "d-2" d2 "d-3" d3 "d-4" d4})
+(def predicate-to-str (map-invert str-to-predicate))
+
 
 (defn counterexample-search-handler [ctx known impl]
 (println ctx)
-  (let [[counterexample-lat counterexample-triples] (search-for-counterexamples (conjoin-predicates (premise impl)) 
-                                                                               (conjoin-predicates (conclusion impl)) 12)]
-    (do (if counterexample-lat (print (str impl " does not hold. Counterexample:\n" [counterexample-lat (first counterexample-triples)] "\n"))
-                               (print (str "No counterexample found for implication " impl ". Assumed to be true.\n")))
-      [[[counterexample-lat (first counterexample-triples)] (compute-predicates counterexample-lat 
-                                                                               (first counterexample-triples)
-                                                                               (attributes ctx))]]))
+(println impl)
+  (let [[counterexample-lat counterexample-triples] (search-for-counterexamples (conjoin-predicates (set (map str-to-predicate (premise impl)))) 
+                                                                                (conjoin-predicates (set (map str-to-predicate (conclusion impl)))) 8)]
+    (do (if counterexample-lat (do (print (str impl " does not hold. Counterexample:\n" [counterexample-lat (first counterexample-triples)] "\n"))
+                                   [[[counterexample-lat (first counterexample-triples)] (map predicate-to-str (compute-predicates counterexample-lat 
+                                                                                                                                   (first counterexample-triples)
+                                                                                                                                   (set  (map str-to-predicate (attributes ctx)))))]])
+                               (counterexamples-via-repl ctx known impl))
+      ))
 )
 
 
-;(def pctx (make-context #{} #{d1 d2 d3 d4} #{}))
+
+;(def pctx (make-context #{} #{"d-1" "d-2" "d-3"} #{}))
 ;(explore-attributes :context pctx :handler counterexample-search-handler)
 
 (def lat (make-lattice #{1 2 3 4 5 6} #{[1 1]

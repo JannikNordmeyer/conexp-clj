@@ -155,7 +155,7 @@
           :abort
           (throw e))))))
 
-(defn- counterexamples-via-repl
+(defn counterexamples-via-repl
   "Starts a repl for counterexamples, which must be specified completely."
   [ctx knowledge impl]
   (expert-interaction {:context ctx,
